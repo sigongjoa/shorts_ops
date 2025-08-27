@@ -3,6 +3,7 @@ import type { Project } from '../../types/youtube-shorts-content-factory/types';
 import { Button } from './common/Button';
 import { Input } from './common/Input';
 import { TextArea } from './common/TextArea';
+import { GoogleDriveFolderPicker } from './GoogleDriveFolderPicker';
 
 interface DashboardProps {
   projects: Project[];
@@ -30,6 +31,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject,
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newProjectName, setNewProjectName] = useState('');
     const [newProjectDesc, setNewProjectDesc] = useState('');
+    const [newProjectDriveLocation, setNewProjectDriveLocation] = useState('');
+    const [newProjectDriveLocationName, setNewProjectDriveLocationName] = useState('No folder selected');
+    const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
 
     const handleAddProject = () => {
         if (!newProjectName.trim()) {
@@ -41,11 +45,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject,
             name: newProjectName,
             description: newProjectDesc,
             shorts: [],
+            driveLocation: newProjectDriveLocation.trim() || undefined, // Add driveLocation
         };
         onAddProject(newProject);
         setIsModalOpen(false);
         setNewProjectName('');
         setNewProjectDesc('');
+        setNewProjectDriveLocation(''); // Clear drive location
+        setNewProjectDriveLocationName('No folder selected');
+    };
+
+    const handleSelectDriveFolder = (folderId: string, folderName: string) => {
+      setNewProjectDriveLocation(folderId);
+      setNewProjectDriveLocationName(folderName);
+      setIsFolderPickerOpen(false);
     };
 
     return (
@@ -77,6 +90,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject,
                     <div className="space-y-4">
                         <Input label="Project Name" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} />
                         <TextArea label="Description" value={newProjectDesc} onChange={e => setNewProjectDesc(e.target.value)} />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Google Drive Folder</label>
+                          <div className="flex items-center space-x-2">
+                            <Input 
+                              value={newProjectDriveLocationName}
+                              readOnly
+                              className="flex-grow bg-gray-50 cursor-not-allowed"
+                              placeholder="Select a folder from Google Drive"
+                            />
+                            <Button type="button" onClick={() => setIsFolderPickerOpen(true)} variant="secondary">Browse</Button>
+                          </div>
+                        </div>
                     </div>
                     <div className="flex justify-end space-x-4 mt-6">
                         <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
@@ -84,6 +109,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject,
                     </div>
                 </div>
             </div>
+        </div>
+      )}
+
+      {isFolderPickerOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4" onClick={() => setIsFolderPickerOpen(false)}>
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <GoogleDriveFolderPicker 
+              onSelectFolder={handleSelectDriveFolder} 
+              onClose={() => setIsFolderPickerOpen(false)}
+            />
+          </div>
         </div>
       )}
     </div>

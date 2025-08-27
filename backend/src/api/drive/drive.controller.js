@@ -122,3 +122,46 @@ export const deleteFile = async (req, res) => {
     res.status(500).send('Failed to delete file.');
   }
 };
+
+export const createGoogleDoc = async (userId, fileName, parentFolderId) => {
+  try {
+    const drive = getDriveClient(userId);
+
+    const fileMetadata = {
+      name: fileName,
+      mimeType: 'application/vnd.google-apps.document',
+      parents: [parentFolderId],
+    };
+
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      fields: 'id,name,mimeType,webViewLink',
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error creating Google Doc:', error.message);
+    throw error; // Re-throw to be caught by the calling function
+  }
+};
+
+export const listGoogleDriveFolders = async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).send('Unauthorized: User ID not found.');
+    }
+
+    const drive = getDriveClient(userId);
+    const response = await drive.files.list({
+      q: 'mimeType = "application/vnd.google-apps.folder" and trashed = false',
+      fields: 'nextPageToken, files(id, name, webViewLink)',
+      pageSize: 100, // Adjust as needed
+    });
+
+    res.status(200).json(response.data.files);
+  } catch (error) {
+    console.error('Error listing Google Drive folders:', error.message);
+    res.status(500).send('Failed to list Google Drive folders.');
+  }
+};

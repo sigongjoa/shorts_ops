@@ -37,9 +37,11 @@ export interface Short {
 }
 
 export interface Project {
-  id:string;
+  id: string;
   name: string;
   description: string;
   shorts: Short[];
+  driveLocation?: string; // Optional Google Drive folder URL or ID
+  driveDocumentId?: string; // ID of the created Google Drive document
 }
 // Dummy comment to trigger re-compilation

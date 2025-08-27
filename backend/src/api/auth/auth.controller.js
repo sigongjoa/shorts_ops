@@ -39,13 +39,15 @@ export const googleAuthCallback = async (req, res) => {
     // In a real app, you'd identify the user and store these tokens securely.
     // For simplicity, we'll just store them in a global object for now.
     // You might want to associate these tokens with a session or user ID.
-    const userId = 'demoUser'; // Replace with actual user identification
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const userInfo = await oauth2.userinfo.get();
+    const userId = userInfo.data.id; // Use Google ID as unique identifier
     tokensStore[userId] = tokens;
 
     // Store user info in session
-    req.session.user = { id: userId, tokens: tokens }; // Store a simple user object
+    req.session.user = { id: userId, email: userInfo.data.email, name: userInfo.data.name }; // Store a simple user object
 
-    console.log('Tokens received and stored:', tokens);
+    console.log('Tokens received and stored for user:', userId);
     console.log('User stored in session:', req.session.user);
 
     // Redirect to the frontend application's base URL

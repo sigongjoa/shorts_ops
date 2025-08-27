@@ -73,6 +73,22 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpd
           <button onClick={onBack} className="text-indigo-500 hover:text-indigo-700 mb-2 font-medium">&larr; Back to Projects</button>
           <h2 className="text-3xl font-bold text-gray-900">{project.name}</h2>
           <p className="text-gray-600 mt-1">{project.description}</p>
+          {project.driveDocumentLink && (
+            <div className="mt-2">
+              <a 
+                href={project.driveDocumentLink} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                </svg>
+                Open Project Document in Google Drive
+              </a>
+            </div>
+          )}
         </div>
         <Button onClick={exportToCSV} variant="secondary">Export All to CSV</Button>
       </div>

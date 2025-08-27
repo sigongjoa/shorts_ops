@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React + TS</title>
+  
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'brand-blue': '#4285F4',
+              'brand-green': '#34A853',
+              'bg-light': '#F1F3F4', // Main background
+              'panel-light': '#FFFFFF', // Panels, sidebars
+              'border-light': '#E0E0E0', // Borders
+              'text-primary': '#202124', // Primary text
+              'text-secondary': '#5F6368', // Secondary/muted text
+              'item-hover': '#F8F9FA', // Hover state for items
+            },
+            keyframes: {
+              progress: {
+                '0%': { width: '0%' },
+                '100%': { width: '100%' },
+              }
+            },
+            
+          }
+        }
+      }
+    </script>
+
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="/src/env/global-env.js"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

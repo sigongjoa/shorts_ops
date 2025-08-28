@@ -1,18 +1,21 @@
 [
   {
-    "id": "proj-1756352769504",
-    "name": "tets1",
+    "id": "proj-1756367933757",
+    "name": "ㅅㄷㄴㅅ",
     "description": "",
     "shorts": [
       {
-        "id": "short-proj-1756352769504-1756352884248",
-        "projectId": "proj-1756352769504",
-        "title": "쌀숭이",
+        "id": "short-proj-1756367933757-1756368004549",
+        "projectId": "proj-1756367933757",
+        "title": "ㅇㄿ",
         "status": "Idea",
         "script": {
           "idea": "",
           "draft": "",
-          "final": ""
+          "hook": "",
+          "immersion": "",
+          "body": "",
+          "cta": ""
         },
         "metadata": {
           "tags": "",
@@ -22,9 +25,9 @@
         }
       },
       {
-        "id": "short-proj-1756352769504-1756352779656",
-        "projectId": "proj-1756352769504",
-        "title": "신창섭\nScript:\nIdea:\nDraft:\nHook: undefined\nImmersion: undefined\nBody: undefined\nCTA: undefined\nMetadata:\nTags:\nCTA:\nImage Ideas:\nAudio Notes:\n\n",
+        "id": "short-proj-1756367933757-1756367952918",
+        "projectId": "proj-1756367933757",
+        "title": "345\nScript:\nIdea:\nDraft:\nHook:\nImmersion:\nBody:\nCTA:\nMetadata:\nTags:\nCTA:\nImage Ideas:\nAudio Notes:\n\n",
         "status": "Idea",
         "script": {
           "idea": "",
@@ -41,44 +44,13 @@
           "audioNotes": ""
         },
         "images": [],
-        "titleLine1": "쌀숭이"
-      }
-    ],
-    "driveLocation": "18KM2VmXoYhVoxQXhHEr6kl0m_zEMWu_e",
-    "driveDocumentId": "1mSCz9oqUlNZNHLvzeWvOPzn8d9PSnjPDFjDxdvWVvIs",
-    "driveDocumentLink": "https://docs.google.com/document/d/1mSCz9oqUlNZNHLvzeWvOPzn8d9PSnjPDFjDxdvWVvIs/edit?usp=drivesdk"
-  },
-  {
-    "id": "proj-1756351370345",
-    "name": "문제생성1",
-    "description": "",
-    "shorts": [
-      {
-        "id": "short-proj-1756351370345-1756352635456",
-        "projectId": "proj-1756351370345",
-        "title": "ㅅㄷㄴㅅ\nScript:\nIdea:\nDraft:\nHook: undefined\nImmersion: undefined\nBody: undefined\nCTA: undefined\nMetadata:\nTags:\nCTA:\nImage Ideas:\nAudio Notes:\n\n",
-        "status": "Idea",
-        "script": {
-          "idea": "",
-          "draft": "",
-          "hook": "",
-          "immersion": "",
-          "body": "",
-          "cta": ""
-        },
-        "metadata": {
-          "tags": "",
-          "cta": "",
-          "imageIdeas": "",
-          "audioNotes": ""
-        },
-        "images": [],
-        "titleLine1": "ㅅㄷㄴㅅㄴ"
+        "titleLine1": "23",
+        "titleLine2": "545"
       },
       {
-        "id": "short-proj-1756351370345-1756351376993",
-        "projectId": "proj-1756351370345",
-        "title": "123",
+        "id": "short-proj-1756367933757-1756367942253",
+        "projectId": "proj-1756367933757",
+        "title": "123\nScript:\nIdea:\nDraft:\nHook:\nImmersion:\nBody:\nCTA:\nMetadata:\nTags:\nCTA:\nImage Ideas:\nAudio Notes:\n\n",
         "status": "Idea",
         "script": {
           "idea": "",
@@ -95,83 +67,9 @@
           "audioNotes": ""
         },
         "images": [],
-        "titleLine1": "1231",
-        "titleLine2": "123"
+        "titleLine1": "45"
       }
     ],
-    "driveLocation": "18KM2VmXoYhVoxQXhHEr6kl0m_zEMWu_e",
-    "driveDocumentId": "1Kft5rAPxKbVOa9rKbH3KaP5RvmLFdTD1IKVA4RLNOHg",
-    "driveDocumentLink": "https://docs.google.com/document/d/1Kft5rAPxKbVOa9rKbH3KaP5RvmLFdTD1IKVA4RLNOHg/edit?usp=drivesdk"
-  },
-  {
-    "id": "proj-1756348867050",
-    "name": "문제생성",
-    "description": "",
-    "shorts": [
-      {
-        "id": "short-proj-1756348867050-1756348877082",
-        "projectId": "proj-1756348867050",
-        "title": "신창섭\nScript:\nIdea:\nDraft:\nHook: undefined\nImmersion: undefined\nBody: undefined\nCTA: undefined\nMetadata:\nTags:\nCTA:\nImage Ideas:\nAudio Notes:\n\n",
-        "status": "Idea",
-        "script": {
-          "idea": "",
-          "draft": "",
-          "hook": "",
-          "immersion": "",
-          "body": "",
-          "cta": ""
-        },
-        "metadata": {
-          "tags": "",
-          "cta": "",
-          "imageIdeas": "",
-          "audioNotes": ""
-        },
-        "images": [],
-        "titleLine1": "123"
-      }
-    ],
-    "driveLocation": "18KM2VmXoYhVoxQXhHEr6kl0m_zEMWu_e",
-    "driveDocumentId": "1iFrFcq5pa-DVLvNS6FQ8KZAkEyU6VgEjvOuQ-hNaY2w",
-    "driveDocumentLink": "https://docs.google.com/document/d/1iFrFcq5pa-DVLvNS6FQ8KZAkEyU6VgEjvOuQ-hNaY2w/edit?usp=drivesdk"
-  },
-  {
-    "id": "proj-1756315168299",
-    "name": "문서생성",
-    "description": "",
-    "shorts": [
-      {
-        "id": "short-proj-1756315168299-1756315177140",
-        "projectId": "proj-1756315168299",
-        "title": "본문쇼츠",
-        "status": "Revised",
-        "script": {
-          "idea": "음식점을",
-          "draft": "갔는데",
-          "hook": "주방장이",
-          "immersion": "요리도 못하는",
-          "body": "손님",
-          "cta": "이라고 요갛ㄴ거로 보면되는거지"
-        },
-        "metadata": {
-          "tags": ""
-        },
-        "idea": "",
-        "draft": "",
-        "hook": "undefined",
-        "immersion": "undefined",
-        "body": "undefined",
-        "cta": "",
-        "tags": "",
-        "imageideas": "",
-        "audionotes": "\n\n",
-        "images": [],
-        "titleLine1": "우우우 쌀쌀살",
-        "titleLine2": "그러니깐"
-      }
-    ],
-    "driveLocation": "18KM2VmXoYhVoxQXhHEr6kl0m_zEMWu_e",
-    "driveDocumentId": "1k73UTlSWWKRxmYUmit9z2iN5XidkwvtBuyc7EaZmTPs",
-    "driveDocumentLink": "https://docs.google.com/document/d/1k73UTlSWWKRxmYUmit9z2iN5XidkwvtBuyc7EaZmTPs/edit?usp=drivesdk"
+    "driveDocumentId": "1-3Yy7VWlb2pEIaI6oAqOUjB4PuARTx2NjYrNeC54mXo"
   }
 ]

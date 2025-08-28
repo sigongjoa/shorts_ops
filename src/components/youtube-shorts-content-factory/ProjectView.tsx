@@ -37,7 +37,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpd
         projectId: project.id,
         title: newShortTitle.trim(),
         status: ShortStatus.IDEA,
-        script: { idea: '', draft: '', final: '' },
+        script: { idea: '', draft: '', hook: '', immersion: '', body: '', cta: '' },
         metadata: { tags: '', cta: '', imageIdeas: '', audioNotes: '' }
       };
 
@@ -73,7 +73,10 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpd
         short.status,
         `"${short.metadata.tags.replace(/"/g, '""')}"`,
         `"${short.metadata.cta.replace(/"/g, '""')}"`,
-        `"${short.script.final.replace(/"/g, '""')}"`
+        `"${short.script.hook.replace(/"/g, '""')}
+${short.script.immersion.replace(/"/g, '""')}
+${short.script.body.replace(/"/g, '""')}
+${short.script.cta.replace(/"/g, '""')}"`
       ].join(",");
       csvContent += row + "\r\n";
     });

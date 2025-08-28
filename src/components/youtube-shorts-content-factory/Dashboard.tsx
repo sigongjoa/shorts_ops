@@ -36,7 +36,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject,
     const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
     const [isAddingProject, setIsAddingProject] = useState(false); // New loading state
 
-    const handleAddProject = async () => { // Make it async
+    const handleAddProject = async () => {
+        if (isAddingProject) return; // Prevent multiple submissions
+
         if (!newProjectName.trim()) {
             alert("Project name is required.");
             return;

@@ -309,9 +309,14 @@ export const addShortToDocument = async (req, res) => {
 
     // Get the current document content to find the end index
     const doc = await docs.documents.get({ documentId });
-    const endIndex = doc.data.body.content[doc.data.body.content.length - 1].endIndex - 1;
+    let insertionIndex = 1; // Default to 1 for an empty document (after initial title/body element)
+    if (doc.data.body && doc.data.body.content && doc.data.body.content.length > 0) {
+      // Find the end index of the last element in the document
+      const lastElement = doc.data.body.content[doc.data.body.content.length - 1];
+      insertionIndex = lastElement.endIndex - 1; // -1 because endIndex is exclusive
+    }
 
-    const requests = docHelpers.generateShortContentRequests(short, endIndex);
+    const requests = docHelpers.generateShortContentRequests(short, insertionIndex);
 
     const response = await docs.documents.batchUpdate({
       documentId,

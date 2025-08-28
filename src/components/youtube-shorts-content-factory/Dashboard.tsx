@@ -34,25 +34,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject,
     const [newProjectDriveLocation, setNewProjectDriveLocation] = useState('');
     const [newProjectDriveLocationName, setNewProjectDriveLocationName] = useState('No folder selected');
     const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
+    const [isAddingProject, setIsAddingProject] = useState(false); // New loading state
 
-    const handleAddProject = () => {
+    const handleAddProject = async () => { // Make it async
         if (!newProjectName.trim()) {
             alert("Project name is required.");
             return;
         }
-        const newProject: Project = {
-            id: `proj-${Date.now()}`,
-            name: newProjectName,
-            description: newProjectDesc,
-            shorts: [],
-            driveLocation: newProjectDriveLocation.trim() || undefined, // Add driveLocation
-        };
-        onAddProject(newProject);
-        setIsModalOpen(false);
-        setNewProjectName('');
-        setNewProjectDesc('');
-        setNewProjectDriveLocation(''); // Clear drive location
-        setNewProjectDriveLocationName('No folder selected');
+
+        setIsAddingProject(true); // Start loading
+        try {
+            const newProject: Project = {
+                id: `proj-${Date.now()}`,
+                name: newProjectName,
+                description: newProjectDesc,
+                shorts: [],
+                driveLocation: newProjectDriveLocation.trim() || undefined, // Add driveLocation
+            };
+            await onAddProject(newProject); // Await the async operation
+            setIsModalOpen(false);
+            setNewProjectName('');
+            setNewProjectDesc('');
+            setNewProjectDriveLocation(''); // Clear drive location
+            setNewProjectDriveLocationName('No folder selected');
+        } catch (error) {
+            console.error('Error adding project:', error);
+            alert('Failed to add project. Check console for details.');
+        } finally {
+            setIsAddingProject(false); // End loading
+        }
     };
 
     const handleSelectDriveFolder = (folderId: string, folderName: string) => {
@@ -104,8 +114,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject,
                         </div>
                     </div>
                     <div className="flex justify-end space-x-4 mt-6">
-                        <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                        <Button variant="primary" onClick={handleAddProject}>Create</Button>
+                        <Button variant="secondary" onClick={() => setIsModalOpen(false)} disabled={isAddingProject}>Cancel</Button>
+                        <Button variant="primary" onClick={handleAddProject} disabled={isAddingProject}>
+                            {isAddingProject ? 'Adding...' : 'Create'}
+                        </Button>
                     </div>
                 </div>
             </div>

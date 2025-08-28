@@ -20,8 +20,12 @@ export const GoogleDriveFolderPicker: React.FC<GoogleDriveFolderPickerProps> = (
 
   useEffect(() => {
     const fetchFolders = async () => {
+      setLoading(true); // Set loading to true when fetch starts
+      setError(null); // Clear previous errors
       try {
-        const response = await fetch('/api/drive/folders');
+        const response = await fetch('/api/drive/folders', {
+          credentials: 'include',
+        });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -30,14 +34,14 @@ export const GoogleDriveFolderPicker: React.FC<GoogleDriveFolderPickerProps> = (
       } catch (err: any) {
         setError(err.message);
       } finally {
-        setLoading(false);
+        setLoading(false); // Set loading to false when fetch completes
       }
     };
     fetchFolders();
   }, []);
 
-  if (loading) return <div className="p-4">Loading folders...</div>;
-  if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
+  if (loading) return <div className="p-4 text-center text-gray-600">Loading folders...</div>;
+  if (error) return <div className="p-4 text-red-500 text-center">Error: {error}</div>;
 
   return (
     <div className="p-4">

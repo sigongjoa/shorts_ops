@@ -5,6 +5,7 @@ import { Button } from './common/Button';
 import { ShortCard } from './ShortCard';
 import { ShortDetailModal } from './ShortDetailModal';
 import { Input } from './common/Input';
+import docsService from '../../services/docsService'; // Import docsService
 
 interface ProjectViewProps {
   project: Project;
@@ -15,6 +16,7 @@ interface ProjectViewProps {
 export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpdateProject }) => {
   const [selectedShort, setSelectedShort] = useState<Short | null>(null);
   const [newShortTitle, setNewShortTitle] = useState('');
+  const [isAddingShort, setIsAddingShort] = useState(false); // New loading state
 
   const handleSaveShort = (updatedShort: Short) => {
     const updatedShorts = project.shorts.map(s => s.id === updatedShort.id ? updatedShort : s);
@@ -22,24 +24,43 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpd
     setSelectedShort(null);
   };
   
-  const handleAddNewShort = () => {
+  const handleAddNewShort = async () => { // Make it async
     if (!newShortTitle.trim()) {
       alert("Please enter a title for the new short.");
       return;
     }
 
-    const newShort: Short = {
-      id: `short-${project.id}-${Date.now()}`,
-      projectId: project.id,
-      title: newShortTitle.trim(),
-      status: ShortStatus.IDEA,
-      script: { idea: '', draft: '', final: '' },
-      metadata: { tags: '', cta: '', imageIdeas: '', audioNotes: '' }
-    };
+    setIsAddingShort(true); // Start loading
+    try {
+      const newShort: Short = {
+        id: `short-${project.id}-${Date.now()}`,
+        projectId: project.id,
+        title: newShortTitle.trim(),
+        status: ShortStatus.IDEA,
+        script: { idea: '', draft: '', final: '' },
+        metadata: { tags: '', cta: '', imageIdeas: '', audioNotes: '' }
+      };
 
-    const updatedProject = { ...project, shorts: [newShort, ...project.shorts] };
-    onUpdateProject(updatedProject);
-    setNewShortTitle('');
+      const updatedProject = { ...project, shorts: [newShort, ...project.shorts] };
+      onUpdateProject(updatedProject);
+      setNewShortTitle('');
+
+      // Add short to Google Doc if project has a linked document
+      if (project.driveDocumentId) {
+        try {
+          await docsService.addShortToDocument(project.driveDocumentId, newShort);
+          console.log('Short added to Google Doc successfully!');
+        } catch (error) {
+          console.error('Failed to add short to Google Doc:', error);
+          alert('Failed to add short to Google Doc. Check console for details.');
+        }
+      }
+    } catch (error) {
+        console.error('Error adding new short:', error);
+        alert('Failed to add new short. Check console for details.');
+    } finally {
+        setIsAddingShort(false); // End loading
+    }
   };
 
   const exportToCSV = () => {
@@ -102,8 +123,11 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpd
             onChange={e => setNewShortTitle(e.target.value)}
             className="flex-grow"
             onKeyDown={(e) => e.key === 'Enter' && handleAddNewShort()}
+            disabled={isAddingShort}
           />
-          <Button onClick={handleAddNewShort}>Add Short</Button>
+          <Button onClick={handleAddNewShort} disabled={isAddingShort}>
+            {isAddingShort ? 'Adding...' : 'Add Short'}
+          </Button>
         </div>
       </div>
       
@@ -119,6 +143,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpd
           short={selectedShort} 
           onClose={() => setSelectedShort(null)} 
           onSave={handleSaveShort} 
+          projectDriveDocumentId={project.driveDocumentId}
         />
       )}
     </div>

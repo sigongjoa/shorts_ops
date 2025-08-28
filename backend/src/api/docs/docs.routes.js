@@ -10,5 +10,8 @@ router.use(authenticate);
 router.post('/', docsController.createDocument);
 router.get('/:documentId', docsController.getDocumentContent);
 router.post('/:documentId/batchUpdate', docsController.batchUpdateDocument);
+router.post('/:documentId/addShort', docsController.addShortToDocument);
+router.get('/:documentId/shorts/:shortId', docsController.getShortContentFromDoc);
+router.put('/:documentId/shorts/:shortId', docsController.updateShortContentInDoc);
 
 export default router;

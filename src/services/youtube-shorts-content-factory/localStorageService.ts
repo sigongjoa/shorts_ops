@@ -24,6 +24,7 @@ const updateBackendProjects = async (projects: Project[]): Promise<void> => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(projects),
+      credentials: 'include', // Add this line
     });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

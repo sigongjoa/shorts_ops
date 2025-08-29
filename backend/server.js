@@ -149,27 +149,129 @@ app.get('/api/projects', (req, res) => {
 
 import authenticate from './src/middleware/auth.js';
 import { createGoogleDoc, createGoogleDocInRoot } from './src/api/drive/drive.controller.js';
+import { initDocumentTemplate } from './src/services/docs/docHelpers.js';
+import { google } from 'googleapis';
+import oauth2Client from './src/config/googleClient.js';
+import { getTokensForUser } from './src/api/auth/auth.controller.js';
 
 // Projects API
-app.get('/api/projects', authenticate, (req, res) => {
-  fs.readFile(dataFilePath, 'utf8', (err, data) => {
-    if (err) {
-      if (err.code === 'ENOENT') {
-        return res.send([]);
+app.get('/api/projects', authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).send('Unauthorized: User ID not found.');
+    }
+
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    const docs = google.docs({ version: 'v1', auth: oauth2Client });
+
+    const tokens = getTokensForUser(userId);
+    if (!tokens) {
+      throw new Error('User not authenticated for Google APIs.');
+    }
+    oauth2Client.setCredentials(tokens);
+
+    // Search for documents that represent projects
+    // For now, let's assume projects are Google Docs with a specific naming convention or in a specific folder
+    // We will search for all Google Docs for simplicity, and filter later if needed.
+    const driveResponse = await drive.files.list({
+      q: 'mimeType = "application/vnd.google-apps.document" and trashed = false',
+      fields: 'files(id, name, webViewLink)',
+      pageSize: 100, // Adjust as needed
+    });
+
+    const projectDocs = driveResponse.data.files || [];
+    const projects = [];
+
+    for (const docMetadata of projectDocs) {
+      try {
+        const docContent = await docs.documents.get({ documentId: docMetadata.id });
+        const document = docContent.data;
+
+        // Extract project details from the document
+        // Assuming project name is the document title
+        const projectName = document.title;
+        let projectDescription = '';
+        let shorts = [];
+
+        // Find project description (if added by initDocumentTemplate)
+        if (document.body && document.body.content) {
+          for (const element of document.body.content) {
+            if (element.paragraph && element.paragraph.elements) {
+              const paragraphText = element.paragraph.elements
+                .map(el => (el.textRun && el.textRun.content) || '')
+                .join('').trim();
+              
+              // Assuming description is the first NORMAL_TEXT paragraph after HEADING_1
+              if (element.paragraph.paragraphStyle && element.paragraph.paragraphStyle.namedStyleType === 'NORMAL_TEXT') {
+                projectDescription = paragraphText;
+                break; // Found description, move on
+              }
+            }
+          }
+
+          // Extract shorts data
+          let currentShort: any = null;
+          let currentSection = '';
+
+          for (const element of document.body.content) {
+            if (element.paragraph && element.paragraph.elements) {
+              const paragraphText = element.paragraph.elements
+                .map(el => (el.textRun && el.textRun.content) || '')
+                .join('').trim();
+
+              if (paragraphText.startsWith('SHORT_ID:')) {
+                if (currentShort) {
+                  shorts.push(currentShort);
+                }
+                currentShort = { id: paragraphText.substring('SHORT_ID:'.length).trim(), script: {}, metadata: {} };
+                currentSection = ''; // Reset section
+              } else if (currentShort) {
+                if (paragraphText.startsWith('Status:')) {
+                  currentShort.status = paragraphText.substring('Status:'.length).trim();
+                } else if (paragraphText.startsWith('---')) {
+                  if (paragraphText.includes('Script')) currentSection = 'script';
+                  else if (paragraphText.includes('Metadata')) currentSection = 'metadata';
+                } else if (currentSection === 'script') {
+                  if (paragraphText.startsWith('Idea:')) currentShort.script.idea = paragraphText.substring('Idea:'.length).trim();
+                  else if (paragraphText.startsWith('Draft:')) currentShort.script.draft = paragraphText.substring('Draft:'.length).trim();
+                  else if (paragraphText.startsWith('Hook:')) currentShort.script.hook = paragraphText.substring('Hook:'.length).trim();
+                  else if (paragraphText.startsWith('Body:')) currentShort.script.body = paragraphText.substring('Body:'.length).trim();
+                  else if (paragraphText.startsWith('CTA:')) currentShort.script.cta = paragraphText.substring('CTA:'.length).trim();
+                } else if (currentSection === 'metadata') {
+                  if (paragraphText.startsWith('Tags:')) currentShort.metadata.tags = paragraphText.substring('Tags:'.length).trim();
+                  else if (paragraphText.startsWith('CTA:')) currentShort.metadata.cta = paragraphText.substring('CTA:'.length).trim();
+                  else if (paragraphText.startsWith('Image / B-Roll Ideas:')) currentShort.metadata.imageIdeas = paragraphText.substring('Image / B-Roll Ideas:'.length).trim();
+                  else if (paragraphText.startsWith('Audio / Music Notes:')) currentShort.metadata.audioNotes = paragraphText.substring('Audio / Music Notes:'.length).trim();
+                }
+              }
+            }
+          }
+          if (currentShort) {
+            shorts.push(currentShort);
+          }
+        }
+
+        projects.push({
+          id: docMetadata.id,
+          name: projectName,
+          description: projectDescription,
+          shorts: shorts,
+          driveDocumentId: docMetadata.id,
+          driveDocumentLink: docMetadata.webViewLink,
+        });
+
+      } catch (docError) {
+        console.error(`Error processing document ${docMetadata.id}:`, docError);
       }
-      console.error('Error reading projects.json:', err);
-      return res.status(500).send('Error reading data file');
     }
-    if (data.trim() === '') {
-      return res.send([]);
-    }
-    try {
-      res.send(JSON.parse(data));
-    } catch (parseError) {
-      console.error('Error parsing projects.json:', parseError);
-      res.status(500).send('Error parsing data file');
-    }
-  });
+
+    res.status(200).json(projects);
+
+  } catch (error) {
+    console.error('Error listing projects from Google Drive:', error.message);
+    res.status(500).send('Failed to list projects from Google Drive.');
+  }
 });
 
 app.post('/api/projects', authenticate, async (req, res) => {
@@ -211,6 +313,28 @@ app.post('/api/projects', authenticate, async (req, res) => {
       if (googleDoc) {
         newProject.driveDocumentId = googleDoc.id;
         newProject.driveDocumentLink = googleDoc.webViewLink;
+
+        // Initialize the new Google Doc with the template
+        try {
+          const docsClient = google.docs({ version: 'v1', auth: oauth2Client });
+          const tokens = getTokensForUser(userId);
+          if (!tokens) {
+            throw new Error('User not authenticated for Docs API.');
+          }
+          oauth2Client.setCredentials(tokens);
+
+          const templateRequests = initDocumentTemplate(newProject.name, newProject.description);
+          await docsClient.documents.batchUpdate({
+            documentId: googleDoc.id,
+            requestBody: {
+              requests: templateRequests,
+            },
+          });
+          console.log(`Initialized Google Doc ${googleDoc.id} with template.`);
+        } catch (templateError) {
+          console.error('Error initializing Google Doc with template:', templateError);
+          // Decide how to handle this error: fail project creation or proceed without template
+        }
       }
 
     } catch (error) {
@@ -293,6 +417,113 @@ app.post('/api/script', (req, res) => {
     }
     res.send({ message: 'Data saved successfully' });
   });
+});
+
+app.put('/api/projects/:projectId', authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).send('Unauthorized: User ID not found.');
+    }
+
+    const { projectId } = req.params;
+    const updatedProject = req.body; // The updated project object from frontend
+
+    const docs = google.docs({ version: 'v1', auth: oauth2Client });
+    const tokens = getTokensForUser(userId);
+    if (!tokens) {
+      throw new Error('User not authenticated for Docs API.');
+    }
+    oauth2Client.setCredentials(tokens);
+
+    const requests = [];
+
+    // Update project name (document title)
+    if (updatedProject.name) {
+      requests.push({
+        updateDocumentStyle: {
+          documentStyle: {
+            title: updatedProject.name,
+          },
+          fields: 'title',
+        },
+      });
+    }
+
+    // Update project description (find and replace in the document body)
+    // This is a simplified approach. A more robust solution would involve
+    // identifying the exact range of the description and replacing it.
+    // For now, we'll assume the description is a single paragraph and replace its content.
+    // This requires reading the current document to find the old description.
+    const docContent = await docs.documents.get({ documentId: projectId });
+    const document = docContent.data;
+    let oldDescription = '';
+    if (document.body && document.body.content) {
+      for (const element of document.body.content) {
+        if (element.paragraph && element.paragraph.elements && 
+            element.paragraph.paragraphStyle && element.paragraph.paragraphStyle.namedStyleType === 'NORMAL_TEXT') {
+          oldDescription = element.paragraph.elements
+            .map(el => (el.textRun && el.textRun.content) || '')
+            .join('').trim();
+          break;
+        }
+      }
+    }
+
+    if (oldDescription !== updatedProject.description) {
+      requests.push({
+        replaceAllText: {
+          replaceText: updatedProject.description,
+          containsText: {
+            text: oldDescription, // This is fragile if oldDescription is not unique
+            matchCase: false,
+          },
+        },
+      });
+    }
+
+    if (requests.length > 0) {
+      await docs.documents.batchUpdate({
+        documentId: projectId,
+        requestBody: {
+          requests,
+        },
+      });
+    }
+
+    // Return the updated project object (which now reflects the Google Doc state)
+    res.status(200).json(updatedProject);
+
+  } catch (error) {
+    console.error('Error updating project in Google Drive:', error.message);
+    res.status(500).send('Failed to update project in Google Drive.');
+  }
+});
+
+app.delete('/api/projects/:projectId', authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).send('Unauthorized: User ID not found.');
+    }
+
+    const { projectId } = req.params;
+
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    const tokens = getTokensForUser(userId);
+    if (!tokens) {
+      throw new Error('User not authenticated for Drive API.');
+    }
+    oauth2Client.setCredentials(tokens);
+
+    await drive.files.delete({ fileId: projectId });
+
+    res.status(204).send(); // No Content
+
+  } catch (error) {
+    console.error('Error deleting project from Google Drive:', error.message);
+    res.status(500).send('Failed to delete project from Google Drive.');
+  }
 });
 
 // Serve static files from the unified-project's public folder

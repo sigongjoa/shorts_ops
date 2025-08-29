@@ -82,6 +82,10 @@ export const ShortDetailModal: React.FC<ShortDetailModalProps> = ({ short, onClo
         if (shortCopy.googleDocId) {
           setCreatedDocId(shortCopy.googleDocId);
         }
+        // If projectDriveDocumentId exists, assume this short's doc is the project doc
+        if (projectDriveDocumentId) {
+          shortCopy.googleDocId = projectDriveDocumentId;
+        }
       } else {
         setEditableShort(null);
       }

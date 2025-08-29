@@ -270,9 +270,206 @@ export const getShortContentFromDoc = async (req, res) => {
 };
 
 export const updateShortContentInDoc = async (req, res) => {
-    // Updating content within a table requires finding the SHORT_ID, then finding the table,
-    // then finding the correct cell, and replacing text within that cell. This is highly complex.
-    // A simplified approach of replacing text might work but is fragile.
-    // Returning a placeholder message for now.
-    res.status(511).send('Updating content in the new table structure is not yet implemented.');
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).send('Unauthorized: User ID not found.');
+    }
+
+    const docs = getDocsClient(userId);
+    const { documentId, shortId } = req.params;
+    const { short: updatedShort } = req.body;
+
+    if (!documentId || !shortId || !updatedShort) {
+      return res.status(400).send('Document ID, Short ID, and updated short object are required.');
+    }
+
+    // 1. Get the full document content
+    const doc = await docs.documents.get({ documentId });
+    const documentContent = doc.data;
+
+    let shortStartIndex = -1;
+    let shortEndIndex = -1;
+
+    // Find the start and end indices of the short's content
+    for (let i = 0; i < documentContent.body.content.length; i++) {
+      const element = documentContent.body.content[i];
+      if (element.paragraph && element.paragraph.elements) {
+        const paragraphText = element.paragraph.elements
+          .map((el) => (el.textRun && el.textRun.content) || '')
+          .join('');
+
+        if (paragraphText.includes(`SHORT_ID: ${shortId}`)) {
+          shortStartIndex = element.startIndex;
+          // Assume the short content ends before the next SHORT_ID or end of document
+          for (let j = i + 1; j < documentContent.body.content.length; j++) {
+            const nextElement = documentContent.body.content[j];
+            if (nextElement.paragraph && nextElement.paragraph.elements) {
+              const nextParagraphText = nextElement.paragraph.elements
+                .map((el) => (el.textRun && el.textRun.content) || '')
+                .join('');
+              if (nextParagraphText.includes('SHORT_ID:')) {
+                shortEndIndex = nextElement.startIndex - 1; // End before the next short
+                break;
+              }
+            }
+          }
+          if (shortEndIndex === -1) {
+            shortEndIndex = documentContent.body.content[documentContent.body.content.length - 1].endIndex - 1; // End of document
+          }
+          break;
+        }
+      }
+    }
+
+    if (shortStartIndex === -1 || shortEndIndex === -1) {
+      return res.status(404).send('Short content not found in document.');
+    }
+
+    // 2. Generate new content for the short
+    // This should mirror the structure created by generateShortPageRequests
+    const newContent = 
+      `SHORT_ID: ${updatedShort.id}\n` +
+      `${updatedShort.title}\n` +
+      `--------------------\n` +
+      `Status: ${updatedShort.status}\n\n` +
+      `--- Script ---\n` +
+      `Idea: ${updatedShort.script.idea}\n` +
+      `Draft: ${updatedShort.script.draft}\n` +
+      `Hook: ${updatedShort.script.hook}\n` +
+      `Body: ${updatedShort.script.body}\n` +
+      `CTA: ${updatedShort.script.cta}\n\n` +
+      `--- Metadata ---\n` +
+      `Tags: ${updatedShort.metadata.tags}\n`;
+
+    const requests = [
+      // Delete existing content
+      {
+        deleteContent: {
+          range: { startIndex: shortStartIndex, endIndex: shortEndIndex },
+        },
+      },
+      // Insert new content
+      {
+        insertText: {
+          text: newContent,
+          location: { index: shortStartIndex },
+        },
+      },
+    ];
+
+    // Re-apply styling for the SHORT_ID and Title
+    // This is a simplified approach and might not perfectly replicate all original styling
+    // For SHORT_ID (hidden)
+    requests.push({
+      updateTextStyle: {
+        range: { startIndex: shortStartIndex, endIndex: shortStartIndex + `SHORT_ID: ${updatedShort.id}`.length },
+        textStyle: {
+          fontSize: { magnitude: 1, unit: 'PT' },
+          foregroundColor: { color: { rgbColor: { red: 1, green: 1, blue: 1 } } },
+        },
+        fields: 'fontSize,foregroundColor',
+      },
+    });
+
+    // For Title (HEADING_2)
+    requests.push({
+      updateParagraphStyle: {
+        range: { startIndex: shortStartIndex + `SHORT_ID: ${updatedShort.id}`.length + 1, endIndex: shortStartIndex + `SHORT_ID: ${updatedShort.id}`.length + 1 + updatedShort.title.length },
+        paragraphStyle: { namedStyleType: 'HEADING_2' },
+        fields: 'namedStyleType',
+      },
+    });
+
+    const response = await docs.documents.batchUpdate({
+      documentId,
+      requestBody: {
+        requests,
+      },
+    });
+
+    res.status(200).json(response.data);
+  } catch (error) {
+    console.error('Error updating short content in document:', error.message);
+    res.status(500).send('Failed to update short content in document.');
+  }
+};
+
+export const deleteShortFromDocument = async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).send('Unauthorized: User ID not found.');
+    }
+
+    const docs = getDocsClient(userId);
+    const { documentId, shortId } = req.params;
+
+    if (!documentId || !shortId) {
+      return res.status(400).send('Document ID and Short ID are required.');
+    }
+
+    // 1. Get the full document content
+    const doc = await docs.documents.get({ documentId });
+    const documentContent = doc.data;
+
+    let shortStartIndex = -1;
+    let shortEndIndex = -1;
+
+    // Find the start and end indices of the short's content
+    for (let i = 0; i < documentContent.body.content.length; i++) {
+      const element = documentContent.body.content[i];
+      if (element.paragraph && element.paragraph.elements) {
+        const paragraphText = element.paragraph.elements
+          .map((el) => (el.textRun && el.textRun.content) || '')
+          .join('');
+
+        if (paragraphText.includes(`SHORT_ID: ${shortId}`)) {
+          shortStartIndex = element.startIndex;
+          // Assume the short content ends before the next SHORT_ID or end of document
+          for (let j = i + 1; j < documentContent.body.content.length; j++) {
+            const nextElement = documentContent.body.content[j];
+            if (nextElement.paragraph && nextElement.paragraph.elements) {
+              const nextParagraphText = nextElement.paragraph.elements
+                .map((el) => (el.textRun && el.textRun.content) || '')
+                .join('');
+              if (nextParagraphText.includes('SHORT_ID:')) {
+                shortEndIndex = nextElement.startIndex - 1; // End before the next short
+                break;
+              }
+            }
+          }
+          if (shortEndIndex === -1) {
+            shortEndIndex = documentContent.body.content[documentContent.body.content.length - 1].endIndex - 1; // End of document
+          }
+          break;
+        }
+      }
+    }
+
+    if (shortStartIndex === -1 || shortEndIndex === -1) {
+      return res.status(404).send('Short content not found in document.');
+    }
+
+    const requests = [
+      {
+        deleteContent: {
+          range: { startIndex: shortStartIndex, endIndex: shortEndIndex },
+        },
+      },
+    ];
+
+    await docs.documents.batchUpdate({
+      documentId,
+      requestBody: {
+        requests,
+      },
+    });
+
+    res.status(204).send(); // No Content
+
+  } catch (error) {
+    console.error('Error deleting short from document:', error.message);
+    res.status(500).send('Failed to delete short from document.');
+  }
 };

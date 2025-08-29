@@ -23,6 +23,28 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpd
     onUpdateProject({ ...project, shorts: updatedShorts });
     setSelectedShort(null);
   };
+
+  const handleDeleteShort = async (shortId: string) => {
+    if (!window.confirm('Are you sure you want to delete this short?')) {
+      return;
+    }
+    try {
+      // Delete from Google Doc if linked
+      if (project.driveDocumentId) {
+        await docsService.deleteShortFromDocument(project.driveDocumentId, shortId);
+        console.log('Short deleted from Google Doc successfully!');
+      }
+
+      // Delete from local state
+      const updatedShorts = project.shorts.filter(s => s.id !== shortId);
+      onUpdateProject({ ...project, shorts: updatedShorts });
+      setSelectedShort(null); // Close modal if the deleted short was open
+
+    } catch (error) {
+      console.error('Error deleting short:', error);
+      alert('Failed to delete short. Check console for details.');
+    }
+  };
   
   const handleAddNewShort = async () => { // Make it async
     if (!newShortTitle.trim()) {
@@ -38,7 +60,8 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpd
         title: newShortTitle.trim(),
         status: ShortStatus.IDEA,
         script: { idea: '', draft: '', hook: '', immersion: '', body: '', cta: '' },
-        metadata: { tags: '', cta: '', imageIdeas: '', audioNotes: '' }
+        metadata: { tags: '', cta: '', imageIdeas: '', audioNotes: '' },
+        googleDocId: project.driveDocumentId, // Set googleDocId to project's driveDocumentId
       };
 
       const updatedProject = { ...project, shorts: [newShort, ...project.shorts] };
@@ -137,7 +160,7 @@ ${short.script.cta.replace(/"/g, '""')}"`
       {/* Shorts List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {project.shorts.map(short => (
-          <ShortCard key={short.id} short={short} onClick={() => setSelectedShort(short)} />
+          <ShortCard key={short.id} short={short} onClick={() => setSelectedShort(short)} onDelete={handleDeleteShort} />
         ))}
       </div>
 

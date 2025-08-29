@@ -5,7 +5,7 @@ const TOC_ANCHOR_NAME = 'TOC_ANCHOR';
  * @param {string} projectTitle The title of the project.
  * @returns {Array<Object>} An array of Google Docs API requests.
  */
-export const initDocumentTemplate = (projectTitle) => {
+export const initDocumentTemplate = (projectTitle, projectDescription = '') => {
   const requests = [];
   let currentIndex = 1; // Start after the initial body element
 
@@ -23,7 +23,23 @@ export const initDocumentTemplate = (projectTitle) => {
   });
   currentIndex += titleText.length;
 
-  // 2. Insert Table of Contents Header
+  // 2. Insert Project Description (if provided)
+  if (projectDescription) {
+    const descriptionText = `${projectDescription}\n\n`; // Add extra newline for spacing
+    requests.push({
+      insertText: { text: descriptionText, location: { index: currentIndex } },
+    });
+    requests.push({
+      updateParagraphStyle: {
+        range: { startIndex: currentIndex, endIndex: currentIndex + descriptionText.length - 1 },
+        paragraphStyle: { namedStyleType: 'NORMAL_TEXT' },
+        fields: 'namedStyleType',
+      },
+    });
+    currentIndex += descriptionText.length;
+  }
+
+  // 3. Insert Table of Contents Header
   const tocHeaderText = 'Table of Contents\n';
   requests.push({
     insertText: { text: tocHeaderText, location: { index: currentIndex } },
@@ -37,13 +53,13 @@ export const initDocumentTemplate = (projectTitle) => {
   });
   currentIndex += tocHeaderText.length;
 
-  // 3. Insert a zero-width space to act as the anchor
+  // 4. Insert a zero-width space to act as the anchor
   const anchorText = '\u200B'; // Zero-width space
   requests.push({
     insertText: { text: anchorText, location: { index: currentIndex } },
   });
 
-  // 4. Create the named range (bookmark) over the anchor character
+  // 5. Create the named range (bookmark) over the anchor character
   requests.push({
     createNamedRange: {
       name: TOC_ANCHOR_NAME,

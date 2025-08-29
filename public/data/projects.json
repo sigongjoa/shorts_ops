@@ -3,9 +3,50 @@
     "id": "proj-1756448000928",
     "name": "프로ㅔㅈㄱ트 생성",
     "description": "",
-    "shorts": [],
+    "shorts": [
+      {
+        "id": "short-proj-1756448000928-1756449103719",
+        "projectId": "proj-1756448000928",
+        "title": "쇼츠2",
+        "status": "Idea",
+        "script": {
+          "idea": "",
+          "draft": "",
+          "hook": "",
+          "immersion": "",
+          "body": "",
+          "cta": ""
+        },
+        "metadata": {
+          "tags": "",
+          "cta": "",
+          "imageIdeas": "",
+          "audioNotes": ""
+        }
+      },
+      {
+        "id": "short-proj-1756448000928-1756449084319",
+        "projectId": "proj-1756448000928",
+        "title": "쇼츠1",
+        "status": "Idea",
+        "script": {
+          "idea": "",
+          "draft": "",
+          "hook": "",
+          "immersion": "",
+          "body": "",
+          "cta": ""
+        },
+        "metadata": {
+          "tags": "",
+          "cta": "",
+          "imageIdeas": "",
+          "audioNotes": ""
+        }
+      }
+    ],
     "driveLocation": "1Ux8lhKoldY2e_vPem6pOpDfT-3hyvuBm",
-    "driveDocumentId": "1PGqFLup3kpD6YHk1vf_lKJgGg20xiKX_IZOn04934Vg",
-    "driveDocumentLink": "https://docs.google.com/document/d/1PGqFLup3kpD6YHk1vf_lKJgGg20xiKX_IZOn04934Vg/edit?usp=drivesdk"
+    "driveDocumentId": "1rZong59aZmyYd6XrzcnTkgM2YJlGUH0-qC3Nv6i0Z-0",
+    "driveDocumentLink": "https://docs.google.com/document/d/1rZong59aZmyYd6XrzcnTkgM2YJlGUH0-qC3Nv6i0Z-0/edit?usp=drivesdk"
   }
 ]

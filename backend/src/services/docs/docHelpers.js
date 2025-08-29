@@ -1,118 +1,198 @@
-export const createTextInsertRequest = (text, locationIndex) => ({
-  insertText: {
-    text: text,
-    location: {
-      index: locationIndex,
-    },
-  },
-});
+const TOC_ANCHOR_NAME = 'TOC_ANCHOR';
 
-export const createUpdateTextStyleRequest = (startIndex, endIndex, textStyle) => ({
-  updateTextStyle: {
-    range: {
-      startIndex: startIndex,
-      endIndex: endIndex,
-    },
-    textStyle: textStyle,
-    fields: Object.keys(textStyle).join(','), // e.g., 'bold,italic,underline'
-  },
-});
-
-// Example textStyle:
-// { bold: true, italic: true, foregroundColor: { color: { rgbColor: { red: 1, green: 0, blue: 0 } } } }
-
-// You can add more helper functions here for other Docs API operations
-// e.g., createParagraphStyleRequest, createTableInsertRequest, etc.
-
-export const generateShortContentRequests = (short, startIndex) => {
+/**
+ * Generates requests to initialize a new document with a Table of Contents structure.
+ * @param {string} projectTitle The title of the project.
+ * @returns {Array<Object>} An array of Google Docs API requests.
+ */
+export const initDocumentTemplate = (projectTitle) => {
   const requests = [];
-  let currentIndex = startIndex;
+  let currentIndex = 1; // Start after the initial body element
 
-  // 1. Insert Page Break (if not the very beginning of the document)
-  if (startIndex > 0) {
-    requests.push({
-      insertPageBreak: {
-        location: {
-          index: currentIndex,
-        },
-      },
-    });
-    currentIndex++; // Page break consumes one index
-  }
-
-  // 2. Insert Short ID (hidden or clearly marked for programmatic access)
-  const shortIdText = `SHORT_ID: ${short.id}\n`;
+  // 1. Insert Project Title
+  const titleText = `${projectTitle}\n`;
   requests.push({
-    insertText: {
-      text: shortIdText,
-      location: {
-        index: currentIndex,
-      },
-    },
-  });
-  // Optionally, make this text very small or hidden if it's purely for programmatic use
-  requests.push({
-    updateTextStyle: {
-      range: {
-        startIndex: currentIndex,
-        endIndex: currentIndex + shortIdText.length,
-      },
-      textStyle: {
-        fontSize: { magnitude: 1, unit: 'PT' }, // Very small font size
-        foregroundColor: { color: { rgbColor: { red: 1, green: 1, blue: 1 } } }, // White text on white background
-      },
-      fields: 'fontSize,foregroundColor',
-    },
-  });
-  currentIndex += shortIdText.length;
-
-  // 3. Insert Short Title (as Heading 1)
-  const titleText = `Title: ${short.title}\n`;
-  requests.push({
-    insertText: {
-      text: titleText,
-      location: {
-        index: currentIndex,
-      },
-    },
+    insertText: { text: titleText, location: { index: currentIndex } },
   });
   requests.push({
     updateParagraphStyle: {
-      range: {
-        startIndex: currentIndex,
-        endIndex: currentIndex + titleText.length,
-      },
-      paragraphStyle: {
-        namedStyleType: 'HEADING_1',
-      },
+      range: { startIndex: currentIndex, endIndex: currentIndex + titleText.length - 1 },
+      paragraphStyle: { namedStyleType: 'HEADING_1' },
       fields: 'namedStyleType',
     },
   });
   currentIndex += titleText.length;
 
-  // 4. Insert Script Details
-  const scriptContent = `Script:\n  Idea: ${short.script.idea}\n  Draft: ${short.script.draft}\n  Hook: ${short.script.hook}\n  Immersion: ${short.script.immersion}\n  Body: ${short.script.body}\n  CTA: ${short.script.cta}\n`;
+  // 2. Insert Table of Contents Header
+  const tocHeaderText = 'Table of Contents\n';
   requests.push({
-    insertText: {
-      text: scriptContent,
-      location: {
-        index: currentIndex,
-      },
+    insertText: { text: tocHeaderText, location: { index: currentIndex } },
+  });
+  requests.push({
+    updateParagraphStyle: {
+      range: { startIndex: currentIndex, endIndex: currentIndex + tocHeaderText.length - 1 },
+      paragraphStyle: { namedStyleType: 'HEADING_2' },
+      fields: 'namedStyleType',
     },
   });
-  currentIndex += scriptContent.length;
+  currentIndex += tocHeaderText.length;
 
-  // 5. Insert Metadata Details
-  const metadataContent = `Metadata:\n  Tags: ${short.metadata.tags}\n  CTA: ${short.metadata.cta}\n  Image Ideas: ${short.metadata.imageIdeas}\n  Audio Notes: ${short.metadata.audioNotes}\n`;
+  // 3. Insert a zero-width space to act as the anchor
+  const anchorText = '\u200B'; // Zero-width space
   requests.push({
-    insertText: {
-      text: metadataContent,
-      location: {
-        index: currentIndex,
+    insertText: { text: anchorText, location: { index: currentIndex } },
+  });
+
+  // 4. Create the named range (bookmark) over the anchor character
+  requests.push({
+    createNamedRange: {
+      name: TOC_ANCHOR_NAME,
+      range: {
+        startIndex: currentIndex,
+        endIndex: currentIndex + anchorText.length, // This will be currentIndex + 1
       },
     },
   });
-  currentIndex += metadataContent.length;
+
+  return requests;
+};
+
+/**
+ * Generates requests to create a new page with a short's content in a table,
+ * including a bookmark for linking.
+ * @param {Object} short The short object.
+ * @param {number} insertionIndex The index in the document to start inserting.
+ * @returns {Array<Object>} An array of Google Docs API requests.
+ */
+export const generateShortPageRequests = (short, insertionIndex) => {
+  const bookmarkName = `short_bookmark_${short.id}`;
+  const shortIdText = `SHORT_ID: ${short.id}`;
+  const requests = [];
+  let currentIndex = insertionIndex;
+
+  // 1. Insert a page break to start on a new page
+  requests.push({ insertPageBreak: { location: { index: currentIndex } } });
+  currentIndex++;
+
+  // 2. Insert the hidden SHORT_ID and create a bookmark for it
+  requests.push({ insertText: { text: `${shortIdText}\n`, location: { index: currentIndex } } });
+  requests.push({
+    createNamedRange: {
+      name: bookmarkName,
+      range: { startIndex: currentIndex, endIndex: currentIndex + shortIdText.length },
+    },
+  });
+  requests.push({
+    updateTextStyle: {
+      range: { startIndex: currentIndex, endIndex: currentIndex + shortIdText.length },
+      textStyle: {
+        fontSize: { magnitude: 1, unit: 'PT' },
+        foregroundColor: { color: { rgbColor: { red: 1, green: 1, blue: 1 } } },
+      },
+      fields: 'fontSize,foregroundColor',
+    },
+  });
+  currentIndex += shortIdText.length + 1;
+
+  // 3. Insert the Short Title and style it as a heading
+  const titleText = `${short.title}\n`;
+  requests.push({ insertText: { text: titleText, location: { index: currentIndex } } });
+  requests.push({
+    updateParagraphStyle: {
+      range: { startIndex: currentIndex, endIndex: currentIndex + titleText.length },
+      paragraphStyle: { namedStyleType: 'HEADING_2' },
+      fields: 'namedStyleType',
+    },
+  });
+  currentIndex += titleText.length;
+
+  // 4. Insert a simple text horizontal rule for visual separation
+  const ruleText = '--------------------\n';
+  requests.push({ insertText: { text: ruleText, location: { index: currentIndex } } });
+  currentIndex += ruleText.length;
+
+  // 5. Insert the rest of the content as a single text block
+  const content = `Status: ${short.status}\n\n` +
+                  `--- Script ---\n` +
+                  `Idea: ${short.script.idea}\n` +
+                  `Draft: ${short.script.draft}\n` +
+                  `Hook: ${short.script.hook}\n` +
+                  `Body: ${short.script.body}\n` +
+                  `CTA: ${short.script.cta}\n\n` +
+                  `--- Metadata ---\n` +
+                  `Tags: ${short.metadata.tags}\n`;
+
+  requests.push({ insertText: { text: content, location: { index: currentIndex } } });
+
+  return requests;
+};
+
+
+/**
+ * Generates requests to update the Table of Contents with a new entry.
+ * @param {Object} short The short object.
+ * @param {Object} document The full Google Doc object.
+ * @returns {Array<Object>} An array of Google Docs API requests.
+ */
+export const generateTocUpdateRequest = (short, document) => {
+  // Defensive check for the existence of namedRanges and the specific anchor
+  if (!document.namedRanges || !document.namedRanges[TOC_ANCHOR_NAME]) {
+    console.error(`'${TOC_ANCHOR_NAME}' not found in the document's named ranges. Table of Contents linking will fail.`);
+    return [];
+  }
+
+  const tocAnchor = document.namedRanges[TOC_ANCHOR_NAME];
+  const anchorRange = tocAnchor.namedRange.ranges[0];
+  const insertionIndex = anchorRange.startIndex;
+  const bookmarkName = `short_bookmark_${short.id}`;
+  const tocText = `${short.title}\n`;
+
+  const requests = [
+    // 1. Insert the new TOC entry text
+    {
+      insertText: {
+        text: tocText,
+        location: { index: insertionIndex },
+      },
+    },
+    // 2. Apply a hyperlink to the new text
+    {
+      updateTextStyle: {
+        range: {
+          startIndex: insertionIndex,
+          endIndex: insertionIndex + tocText.length - 1, // -1 for newline
+        },
+        textStyle: {
+          link: {
+            bookmarkId: bookmarkName,
+          },
+        },
+        fields: 'link',
+      },
+    },
+    // 3. Delete the old anchor
+    {
+      deleteNamedRange: {
+        name: TOC_ANCHOR_NAME,
+      },
+    },
+    // 4. Recreate the anchor at the new position. It must span at least one character.
+    {
+        insertText: {
+            text: '\u200B', // Zero-width space character to serve as the new anchor point
+            location: { index: insertionIndex + tocText.length },
+        }
+    },
+    {
+      createNamedRange: {
+        name: TOC_ANCHOR_NAME,
+        range: {
+          startIndex: insertionIndex + tocText.length,
+          endIndex: insertionIndex + tocText.length + 1, // Span the zero-width character
+        },
+      },
+    },
+  ];
 
   return requests;
 };

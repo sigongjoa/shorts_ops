@@ -1,75 +1,11 @@
 [
   {
-    "id": "proj-1756367933757",
-    "name": "ㅅㄷㄴㅅ",
+    "id": "proj-1756448000928",
+    "name": "프로ㅔㅈㄱ트 생성",
     "description": "",
-    "shorts": [
-      {
-        "id": "short-proj-1756367933757-1756368004549",
-        "projectId": "proj-1756367933757",
-        "title": "ㅇㄿ",
-        "status": "Idea",
-        "script": {
-          "idea": "",
-          "draft": "",
-          "hook": "",
-          "immersion": "",
-          "body": "",
-          "cta": ""
-        },
-        "metadata": {
-          "tags": "",
-          "cta": "",
-          "imageIdeas": "",
-          "audioNotes": ""
-        }
-      },
-      {
-        "id": "short-proj-1756367933757-1756367952918",
-        "projectId": "proj-1756367933757",
-        "title": "345\nScript:\nIdea:\nDraft:\nHook:\nImmersion:\nBody:\nCTA:\nMetadata:\nTags:\nCTA:\nImage Ideas:\nAudio Notes:\n\n",
-        "status": "Idea",
-        "script": {
-          "idea": "",
-          "draft": "",
-          "hook": "",
-          "immersion": "",
-          "body": "",
-          "cta": ""
-        },
-        "metadata": {
-          "tags": "",
-          "cta": "",
-          "imageIdeas": "",
-          "audioNotes": ""
-        },
-        "images": [],
-        "titleLine1": "23",
-        "titleLine2": "545"
-      },
-      {
-        "id": "short-proj-1756367933757-1756367942253",
-        "projectId": "proj-1756367933757",
-        "title": "123\nScript:\nIdea:\nDraft:\nHook:\nImmersion:\nBody:\nCTA:\nMetadata:\nTags:\nCTA:\nImage Ideas:\nAudio Notes:\n\n",
-        "status": "Idea",
-        "script": {
-          "idea": "",
-          "draft": "",
-          "hook": "",
-          "immersion": "",
-          "body": "",
-          "cta": ""
-        },
-        "metadata": {
-          "tags": "",
-          "cta": "",
-          "imageIdeas": "",
-          "audioNotes": ""
-        },
-        "images": [],
-        "titleLine1": "45"
-      }
-    ],
-    "driveDocumentId": "1-3Yy7VWlb2pEIaI6oAqOUjB4PuARTx2NjYrNeC54mXo"
+    "shorts": [],
+    "driveLocation": "1Ux8lhKoldY2e_vPem6pOpDfT-3hyvuBm",
+    "driveDocumentId": "1PGqFLup3kpD6YHk1vf_lKJgGg20xiKX_IZOn04934Vg",
+    "driveDocumentLink": "https://docs.google.com/document/d/1PGqFLup3kpD6YHk1vf_lKJgGg20xiKX_IZOn04934Vg/edit?usp=drivesdk"
   }
 ]

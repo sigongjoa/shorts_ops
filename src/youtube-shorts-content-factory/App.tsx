@@ -44,19 +44,11 @@ const App: React.FC = () => {
   };
 
   const handleAddProject = async (newProject: Project) => {
-    try {
-      const doc = await docsService.createDocument(newProject.name);
-      console.log("Google Doc created:", doc);
-      newProject.driveDocumentId = doc.documentId;
-
-    } catch (error) {
-      console.error("Failed to create Google Sheet or Doc for project:", error);
-      alert("Failed to create Google Sheet or Doc for the new project. Check console for details.");
-    }
-    // Save the project again to include the driveDocumentId
-    await saveProject(newProject);
-    const data = await fetchProjectsAndShorts();
-    console.log("Fetched projects after add:", data); // Add this line
+    // The backend will now handle Google Doc creation based on driveFolderUrl
+    // We will save the project and then fetch updated projects to get the driveDocumentId
+    await saveProject(newProject); // Save the project initially
+    const data = await fetchProjectsAndShorts(); // Re-fetch to get the updated project with driveDocumentId from backend
+    console.log("Fetched projects after add:", data);
     setProjects(data);
   };
 

@@ -145,6 +145,27 @@ export const createGoogleDoc = async (userId, fileName, parentFolderId) => {
   }
 };
 
+export const createGoogleDocInRoot = async (userId, fileName) => {
+  try {
+    const drive = getDriveClient(userId);
+
+    const fileMetadata = {
+      name: fileName,
+      mimeType: 'application/vnd.google-apps.document',
+    };
+
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      fields: 'id,name,mimeType,webViewLink',
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error creating Google Doc in root:', error.message);
+    throw error; // Re-throw to be caught by the calling function
+  }
+};
+
 export const listGoogleDriveFolders = async (req, res) => {
   try {
     const userId = req.userId;

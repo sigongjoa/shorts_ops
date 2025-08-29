@@ -148,7 +148,7 @@ app.get('/api/projects', (req, res) => {
 });
 
 import authenticate from './src/middleware/auth.js';
-import { createGoogleDoc } from './src/api/drive/drive.controller.js';
+import { createGoogleDoc, createGoogleDocInRoot } from './src/api/drive/drive.controller.js';
 
 // Projects API
 app.get('/api/projects', authenticate, (req, res) => {
@@ -176,36 +176,47 @@ app.post('/api/projects', authenticate, async (req, res) => {
   let newProjects = req.body;
   const newProject = newProjects[0]; // Assuming the new project is the first one in the array
 
-  if (newProject && newProject.driveLocation) {
-    const driveUrl = newProject.driveLocation;
-    const folderIdMatch = driveUrl.match(/folders\/([a-zA-Z0-9_-]+)/);
-    let parentFolderId = null;
+  if (newProject) {
+    try {
+      const userId = req.userId; 
+      if (!userId) {
+        return res.status(401).send('Unauthorized: User ID not found.');
+      }
 
-    if (folderIdMatch && folderIdMatch[1]) {
-      parentFolderId = folderIdMatch[1];
-    } else {
-      // If it's not a folder URL, try to use it directly as an ID
-      parentFolderId = driveUrl;
-    }
+      const docTitle = `${newProject.name} - Project Document`;
+      let googleDoc = null;
 
-    if (parentFolderId) {
-      try {
-        // Assuming userId is available from authentication middleware
-        const userId = req.userId; 
-        if (!userId) {
-          return res.status(401).send('Unauthorized: User ID not found.');
+      if (newProject.driveLocation) {
+        const driveUrl = newProject.driveLocation;
+        const folderIdMatch = driveUrl.match(/folders\/([a-zA-Z0-9_-]+)/);
+        let parentFolderId = null;
+
+        if (folderIdMatch && folderIdMatch[1]) {
+          parentFolderId = folderIdMatch[1];
+        } else {
+          // If it's not a folder URL, try to use it directly as an ID
+          parentFolderId = driveUrl;
         }
 
-        const docTitle = `${newProject.name} - Project Document`;
-        const googleDoc = await createGoogleDoc(userId, docTitle, parentFolderId);
+        if (parentFolderId) {
+          googleDoc = await createGoogleDoc(userId, docTitle, parentFolderId);
+          console.log(`Created Google Doc: ${googleDoc.name} (${googleDoc.id}) in specified folder at ${googleDoc.webViewLink}`);
+        }
+      } else {
+        // If no driveLocation is provided, create in root
+        googleDoc = await createGoogleDocInRoot(userId, docTitle);
+        console.log(`Created Google Doc: ${googleDoc.name} (${googleDoc.id}) in root at ${googleDoc.webViewLink}`);
+      }
+
+      if (googleDoc) {
         newProject.driveDocumentId = googleDoc.id;
         newProject.driveDocumentLink = googleDoc.webViewLink;
-        console.log(`Created Google Doc: ${googleDoc.name} (${googleDoc.id}) at ${googleDoc.webViewLink}`);
-      } catch (error) {
-        console.error('Error creating Google Doc for project:', error);
-        // Decide how to handle this error: fail project creation or proceed without Drive doc
-        // For now, we'll just log and proceed without the Drive doc details
       }
+
+    } catch (error) {
+      console.error('Error creating Google Doc for project:', error);
+      // Decide how to handle this error: fail project creation or proceed without Drive doc
+      // For now, we'll just log and proceed without the Drive doc details
     }
   }
 
@@ -214,7 +225,7 @@ app.post('/api/projects', authenticate, async (req, res) => {
       console.error('Error writing projects.json:', err);
       return res.status(500).send('Error writing data file');
     }
-    res.send({ message: 'Data saved successfully' });
+    res.send(newProject); // Return the updated newProject object
   });
 });
 

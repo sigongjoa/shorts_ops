@@ -87,7 +87,7 @@ export const generateShortPageRequests = (short, insertionIndex) => {
   let currentIndex = insertionIndex;
 
   // 1. Insert a page break to start on a new page
-  requests.push({ insertPageBreak: { location: { index: currentIndex } } });
+  requests.push({ insertPageBreak: { location: { index: Math.max(0, currentIndex - 1) } } });
   currentIndex++;
 
   // 2. Insert the hidden SHORT_ID and create a bookmark for it

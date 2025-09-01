@@ -3,7 +3,7 @@ import type { Project } from '../types/youtube-shorts-content-factory/types';
 import { Dashboard } from '../components/youtube-shorts-content-factory/Dashboard';
 import { ProjectView } from '../components/youtube-shorts-content-factory/ProjectView';
 import { Header } from '../components/youtube-shorts-content-factory/Header';
-import { fetchProjectsAndShorts, saveProject, deleteProject } from '../services/youtube-shorts-content-factory/projectService';
+import projectService from '../services/youtube-shorts-content-factory/projectService';
 import sheetsService from '../services/sheetsService';
 import docsService from '../services/docsService';
 
@@ -14,9 +14,10 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const data = await fetchProjectsAndShorts();
+        const data = await projectService.fetchProjectsAndShorts();
         console.log("Fetched projects on load:", data); // Add this line
-        setProjects(data);
+        const safeData = Array.isArray(data) ? data : [data];
+        setProjects(safeData);
       } catch (error) {
         console.error("App.tsx: Error fetching projects:", error);
         alert("Failed to load projects. Check console for details.");
@@ -35,9 +36,9 @@ const App: React.FC = () => {
 
   const handleUpdateProject = async (updatedProject: Project) => {
     try {
-      const savedProject = await saveProject(updatedProject);
+      const savedProject = await projectService.saveProject(updatedProject);
       // After saving, re-fetch all projects to ensure UI is consistent with backend
-      const data = await fetchProjectsAndShorts();
+      const data = await projectService.fetchProjectsAndShorts();
       console.log("Fetched projects after update:", data);
       setProjects(data);
       if (selectedProject && selectedProject.id === savedProject.id) {
@@ -50,17 +51,19 @@ const App: React.FC = () => {
   };
 
   const handleAddProject = async (newProject: Project) => {
-    // The backend will now handle Google Doc creation based on driveFolderUrl
-    // We will save the project and then fetch updated projects to get the driveDocumentId
-    await saveProject(newProject); // Save the project initially
-    const data = await fetchProjectsAndShorts(); // Re-fetch to get the updated project with driveDocumentId from backend
-    console.log("Fetched projects after add:", data);
-    setProjects(data);
+    try {
+      const savedProject = await projectService.saveProject(newProject); // Capture the saved project
+      setProjects((prevProjects) => [...prevProjects, savedProject]); // Add it to the state
+      // No need to re-fetch all projects immediately here, as we have the updated project
+    } catch (error) {
+      console.error("Error adding project:", error);
+      alert("Failed to add project. Check console for details.");
+    }
   };
 
   const handleDeleteProject = async (projectId: string) => {
-    await deleteProject(projectId);
-    const data = await fetchProjectsAndShorts();
+    await projectService.deleteProject(projectId);
+    const data = await projectService.fetchProjectsAndShorts();
     console.log("Fetched projects after delete:", data); // Add this line
     setProjects(data);
   };

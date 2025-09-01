@@ -11,6 +11,17 @@ import multer from 'multer';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function normalizeProject(project) {
+  return {
+    id: String(project.id || `temp-${Date.now()}`), // Ensure ID is string, generate if missing
+    name: String(project.name || ''),
+    description: String(project.description || ''),
+    shorts: Array.isArray(project.shorts) ? project.shorts : [],
+    driveDocumentId: project.driveDocumentId ? String(project.driveDocumentId) : undefined,
+    driveDocumentLink: project.driveDocumentLink ? String(project.driveDocumentLink) : undefined,
+  };
+}
+
 const app = express();
 const PORT = process.env.PORT || 3002; // Use 3001 for unified backend
 
@@ -139,7 +150,10 @@ app.get('/api/projects', (req, res) => {
       return res.send([]);
     }
     try {
-      res.send(JSON.parse(data));
+      const parsed = JSON.parse(data);
+      // Always convert to an array
+      const projects = Array.isArray(parsed) ? parsed : [parsed];
+      res.send(projects);
     } catch (parseError) {
       console.error('Error parsing projects.json:', parseError);
       res.status(500).send('Error parsing data file');
@@ -211,7 +225,7 @@ app.get('/api/projects', authenticate, async (req, res) => {
           }
 
           // Extract shorts data
-          let currentShort: any = null;
+          let currentShort = null;
           let currentSection = '';
 
           for (const element of document.body.content) {
@@ -252,14 +266,14 @@ app.get('/api/projects', authenticate, async (req, res) => {
           }
         }
 
-        projects.push({
+        projects.push(normalizeProject({
           id: docMetadata.id,
           name: projectName,
           description: projectDescription,
           shorts: shorts,
           driveDocumentId: docMetadata.id,
           driveDocumentLink: docMetadata.webViewLink,
-        });
+        }));
 
       } catch (docError) {
         console.error(`Error processing document ${docMetadata.id}:`, docError);
@@ -275,10 +289,20 @@ app.get('/api/projects', authenticate, async (req, res) => {
 });
 
 app.post('/api/projects', authenticate, async (req, res) => {
-  let newProjects = req.body;
-  const newProject = newProjects[0]; // Assuming the new project is the first one in the array
+  let newProject;
 
-  if (newProject) {
+  if (Array.isArray(req.body)) {
+    newProject = req.body[0];
+  } else if (req.body && typeof req.body === 'object') {
+    newProject = req.body;
+  }
+
+  if (!newProject) {
+    return res.status(400).send({ error: 'Invalid project data' });
+  }
+
+  newProject = normalizeProject(newProject);
+
     try {
       const userId = req.userId; 
       if (!userId) {
@@ -311,8 +335,10 @@ app.post('/api/projects', authenticate, async (req, res) => {
       }
 
       if (googleDoc) {
+        newProject.id = googleDoc.id;
         newProject.driveDocumentId = googleDoc.id;
         newProject.driveDocumentLink = googleDoc.webViewLink;
+        newProject.shorts = []; // Initialize shorts array
 
         // Initialize the new Google Doc with the template
         try {
@@ -342,14 +368,13 @@ app.post('/api/projects', authenticate, async (req, res) => {
       // Decide how to handle this error: fail project creation or proceed without Drive doc
       // For now, we'll just log and proceed without the Drive doc details
     }
-  }
 
-  fs.writeFile(dataFilePath, JSON.stringify(newProjects, null, 2), 'utf8', (err) => {
+  fs.writeFile(dataFilePath, JSON.stringify([normalizeProject(newProject)], null, 2), 'utf8', (err) => {
     if (err) {
       console.error('Error writing projects.json:', err);
       return res.status(500).send('Error writing data file');
     }
-    res.send(newProject); // Return the updated newProject object
+    res.send(normalizeProject(newProject)); // Return the updated newProject object
   });
 });
 
@@ -427,9 +452,10 @@ app.put('/api/projects/:projectId', authenticate, async (req, res) => {
     }
 
     const { projectId } = req.params;
-    const updatedProject = req.body; // The updated project object from frontend
+    const updatedProject = normalizeProject(req.body); // The updated project object from frontend
 
     const docs = google.docs({ version: 'v1', auth: oauth2Client });
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
     const tokens = getTokensForUser(userId);
     if (!tokens) {
       throw new Error('User not authenticated for Docs API.');
@@ -438,24 +464,25 @@ app.put('/api/projects/:projectId', authenticate, async (req, res) => {
 
     const requests = [];
 
-    // Update project name (document title)
+    // Update project name (document title) using Drive API
     if (updatedProject.name) {
-      requests.push({
-        updateDocumentStyle: {
-          documentStyle: {
-            title: updatedProject.name,
-          },
-          fields: 'title',
+      await drive.files.update({
+        fileId: updatedProject.driveDocumentId,
+        requestBody: {
+          name: updatedProject.name,
         },
       });
     }
+
+    
 
     // Update project description (find and replace in the document body)
     // This is a simplified approach. A more robust solution would involve
     // identifying the exact range of the description and replacing it.
     // For now, we'll assume the description is a single paragraph and replace its content.
     // This requires reading the current document to find the old description.
-    const docContent = await docs.documents.get({ documentId: projectId });
+    console.log('Attempting to update Google Doc with ID:', updatedProject.driveDocumentId);
+    const docContent = await docs.documents.get({ documentId: updatedProject.driveDocumentId });
     const document = docContent.data;
     let oldDescription = '';
     if (document.body && document.body.content) {

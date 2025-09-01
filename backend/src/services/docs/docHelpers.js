@@ -152,8 +152,12 @@ export const generateShortPageRequests = (short, insertionIndex) => {
  */
 export const generateTocUpdateRequest = (short, document) => {
   // Defensive check for the existence of namedRanges and the specific anchor
-  if (!document.namedRanges || !document.namedRanges[TOC_ANCHOR_NAME]) {
-    console.error(`'${TOC_ANCHOR_NAME}' not found in the document's named ranges. Table of Contents linking will fail.`);
+  if (!document.namedRanges ||
+      !document.namedRanges[TOC_ANCHOR_NAME] ||
+      !document.namedRanges[TOC_ANCHOR_NAME].namedRange ||
+      !document.namedRanges[TOC_ANCHOR_NAME].namedRange.ranges ||
+      document.namedRanges[TOC_ANCHOR_NAME].namedRange.ranges.length === 0) {
+    console.error(`'${TOC_ANCHOR_NAME}' or its ranges not found in the document's named ranges. Table of Contents linking will fail.`);
     return [];
   }
 

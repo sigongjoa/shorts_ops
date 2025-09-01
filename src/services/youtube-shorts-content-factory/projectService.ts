@@ -1,4 +1,4 @@
-import api from '../../api';
+import api from "../api";
 import type { Project } from '../../types/youtube-shorts-content-factory/types';
 
 const projectService = {

@@ -123,10 +123,32 @@ export const deleteFile = async (req, res) => {
   }
 };
 
+// Helper to find an existing Google Doc by name and optional parent folder
+const findGoogleDocByName = async (userId, fileName, parentFolderId = null) => {
+  const drive = getDriveClient(userId);
+  let q = `name = '${fileName}' and mimeType = 'application/vnd.google-apps.document' and trashed = false`;
+  if (parentFolderId) {
+    q += ` and '${parentFolderId}' in parents`;
+  }
+
+  const response = await drive.files.list({
+    q: q,
+    fields: 'files(id, name, mimeType, webViewLink)',
+    spaces: 'drive',
+  });
+
+  return response.data.files.length > 0 ? response.data.files[0] : null;
+};
+
 export const createGoogleDoc = async (userId, fileName, parentFolderId) => {
   try {
-    const drive = getDriveClient(userId);
+    const existingDoc = await findGoogleDocByName(userId, fileName, parentFolderId);
+    if (existingDoc) {
+      console.log(`Found existing Google Doc: ${existingDoc.name} (${existingDoc.id}). Reusing it.`);
+      return existingDoc;
+    }
 
+    const drive = getDriveClient(userId);
     const fileMetadata = {
       name: fileName,
       mimeType: 'application/vnd.google-apps.document',
@@ -147,8 +169,13 @@ export const createGoogleDoc = async (userId, fileName, parentFolderId) => {
 
 export const createGoogleDocInRoot = async (userId, fileName) => {
   try {
-    const drive = getDriveClient(userId);
+    const existingDoc = await findGoogleDocByName(userId, fileName); // No parentFolderId for root
+    if (existingDoc) {
+      console.log(`Found existing Google Doc in root: ${existingDoc.name} (${existingDoc.id}). Reusing it.`);
+      return existingDoc;
+    }
 
+    const drive = getDriveClient(userId);
     const fileMetadata = {
       name: fileName,
       mimeType: 'application/vnd.google-apps.document',

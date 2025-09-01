@@ -6,6 +6,7 @@ import { Button } from './common/Button';
 import { Input } from './common/Input';
 import { TextArea } from './common/TextArea';
 import docsService from '../../services/docsService'; // Import docsService
+import { GoogleDriveFolderPicker } from './GoogleDriveFolderPicker'; // Import Folder Picker
 
 // Removed import for generateScriptFromIdea
 
@@ -22,6 +23,7 @@ export const ShortDetailModal: React.FC<ShortDetailModalProps> = ({ short, onClo
   const [newlyAddedImageFiles, setNewlyAddedImageFiles] = useState<File[]>([]);
   const loadedBlobUrlsRef = useRef<string[]>([]);
   const [docTitle, setDocTitle] = useState(''); // State for document title
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null); // State for selected folder ID
   const [createdDocId, setCreatedDocId] = useState<string | null>(null); // State for created document ID
   const [isLoading, setIsLoading] = useState(false); // New loading state
 
@@ -286,14 +288,18 @@ export const ShortDetailModal: React.FC<ShortDetailModalProps> = ({ short, onClo
       alert('Please enter a document title.');
       return;
     }
+    setIsLoading(true);
     try {
-      const response = await docsService.createDocument(docTitle);
+      // Pass title and the selected folder ID to the service
+      const response = await docsService.createDocument(docTitle, selectedFolderId);
       setCreatedDocId(response.documentId);
       setEditableShort(prev => prev ? { ...prev, googleDocId: response.documentId } : null);
       alert(`Document created with ID: ${response.documentId}`);
     } catch (error) {
       console.error('Error creating document:', error);
       alert('Failed to create document.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -347,7 +353,10 @@ export const ShortDetailModal: React.FC<ShortDetailModalProps> = ({ short, onClo
                 ) : (
                     <div className="space-y-4">
                         <Input label="새 문서 제목" id="docTitle" value={docTitle} onChange={e => setDocTitle(e.target.value)} placeholder="새 Google 문서 제목" />
-                        <Button onClick={handleCreateDocument} className="w-full">새 Google Doc 생성</Button>
+                        <GoogleDriveFolderPicker onFolderSelect={setSelectedFolderId} />
+                        <Button onClick={handleCreateDocument} className="w-full" disabled={!docTitle.trim()}>
+                            {isLoading ? '생성 중...' : '새 Google Doc 생성'}
+                        </Button>
                     </div>
                 )}
             </div>

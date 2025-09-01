@@ -1,4 +1,4 @@
-const TOC_ANCHOR_NAME = 'TOC_ANCHOR';
+export const TOC_ANCHOR_NAME = 'TOC_ANCHOR';
 
 /**
  * Generates requests to initialize a new document with a Table of Contents structure.
@@ -6,8 +6,10 @@ const TOC_ANCHOR_NAME = 'TOC_ANCHOR';
  * @returns {Array<Object>} An array of Google Docs API requests.
  */
 export const initDocumentTemplate = (projectTitle, projectDescription = '') => {
-  const requests = [];
-  let currentIndex = 1; // Start after the initial body element
+  const requests = [
+    
+  ];
+  let currentIndex = 1; // Start at the end of the initial empty paragraph
 
   // 1. Insert Project Title
   const titleText = `${projectTitle}\n`;
@@ -39,36 +41,10 @@ export const initDocumentTemplate = (projectTitle, projectDescription = '') => {
     currentIndex += descriptionText.length;
   }
 
-  // 3. Insert Table of Contents Header
-  const tocHeaderText = 'Table of Contents\n';
-  requests.push({
-    insertText: { text: tocHeaderText, location: { index: currentIndex } },
-  });
-  requests.push({
-    updateParagraphStyle: {
-      range: { startIndex: currentIndex, endIndex: currentIndex + tocHeaderText.length - 1 },
-      paragraphStyle: { namedStyleType: 'HEADING_2' },
-      fields: 'namedStyleType',
-    },
-  });
-  currentIndex += tocHeaderText.length;
+  
 
-  // 4. Insert a zero-width space to act as the anchor
-  const anchorText = '\u200B'; // Zero-width space
-  requests.push({
-    insertText: { text: anchorText, location: { index: currentIndex } },
-  });
+  
 
-  // 5. Create the named range (bookmark) over the anchor character
-  requests.push({
-    createNamedRange: {
-      name: TOC_ANCHOR_NAME,
-      range: {
-        startIndex: currentIndex,
-        endIndex: currentIndex + anchorText.length, // This will be currentIndex + 1
-      },
-    },
-  });
 
   return requests;
 };
@@ -110,25 +86,16 @@ export const generateShortPageRequests = (short, insertionIndex) => {
   });
   currentIndex += shortIdText.length + 1;
 
-  // 3. Insert the Short Title and style it as a heading
-  const titleText = `${short.title}\n`;
-  requests.push({ insertText: { text: titleText, location: { index: currentIndex } } });
-  requests.push({
-    updateParagraphStyle: {
-      range: { startIndex: currentIndex, endIndex: currentIndex + titleText.length },
-      paragraphStyle: { namedStyleType: 'HEADING_2' },
-      fields: 'namedStyleType',
-    },
-  });
-  currentIndex += titleText.length;
-
-  // 4. Insert a simple text horizontal rule for visual separation
+  // 3. Insert a simple text horizontal rule for visual separation
   const ruleText = '--------------------\n';
   requests.push({ insertText: { text: ruleText, location: { index: currentIndex } } });
   currentIndex += ruleText.length;
 
-  // 5. Insert the rest of the content as a single text block
-  const content = `Status: ${short.status}\n\n` +
+  // 4. Insert the rest of the content as a single text block
+  const content = `Title: ${short.title || ''}\n` +
+                  `Shorts Title Line 1: ${short.titleLine1 || ''}\n` +
+                  `Shorts Title Line 2: ${short.titleLine2 || ''}\n\n` +
+                  `Status: ${short.status}\n\n` +
                   `--- Script ---\n` +
                   `Idea: ${short.script.idea}\n` +
                   `Draft: ${short.script.draft}\n` +
@@ -140,9 +107,43 @@ export const generateShortPageRequests = (short, insertionIndex) => {
 
   requests.push({ insertText: { text: content, location: { index: currentIndex } } });
 
+  // Reset text style to black for the main content to avoid style bleeding from the hidden ID
+  requests.push({
+    updateTextStyle: {
+      range: {
+        startIndex: currentIndex,
+        endIndex: currentIndex + content.length,
+      },
+      textStyle: {
+        // Set foregroundColor to black
+        foregroundColor: { color: { rgbColor: { red: 0, green: 0, blue: 0 } } },
+        // Set font size to 24pt as requested
+        fontSize: { magnitude: 24, unit: 'PT' },
+      },
+      fields: 'foregroundColor,fontSize',
+    },
+  });
+
   return requests;
 };
 
+
+/**
+ * Finds the index of a named range within a document.
+ * @param {Object} document The full Google Doc object.
+ * @param {string} rangeName The name of the range to find.
+ * @returns {number} The start index of the named range, or -1 if not found.
+ */
+export const findNamedRangeIndex = (document, rangeName) => {
+  if (!document.namedRanges || !document.namedRanges[rangeName]) {
+    return -1;
+  }
+  const ranges = document.namedRanges[rangeName].ranges;
+  if (ranges && ranges.length > 0) {
+    return ranges[0].startIndex;
+  }
+  return -1;
+};
 
 /**
  * Generates requests to update the Table of Contents with a new entry.
@@ -151,36 +152,29 @@ export const generateShortPageRequests = (short, insertionIndex) => {
  * @returns {Array<Object>} An array of Google Docs API requests.
  */
 export const generateTocUpdateRequest = (short, document) => {
-  // Defensive check for the existence of namedRanges and the specific anchor
-  if (!document.namedRanges ||
-      !document.namedRanges[TOC_ANCHOR_NAME] ||
-      !document.namedRanges[TOC_ANCHOR_NAME].namedRange ||
-      !document.namedRanges[TOC_ANCHOR_NAME].namedRange.ranges ||
-      document.namedRanges[TOC_ANCHOR_NAME].namedRange.ranges.length === 0) {
-    console.error(`'${TOC_ANCHOR_NAME}' or its ranges not found in the document's named ranges. Table of Contents linking will fail.`);
-    return [];
+  const tocAnchorIndex = findNamedRangeIndex(document, TOC_ANCHOR_NAME);
+  if (tocAnchorIndex === -1) {
+    console.error('TOC anchor not found. Cannot update TOC.');
+    return []; // Return empty array if anchor is not found
   }
 
-  const tocAnchor = document.namedRanges[TOC_ANCHOR_NAME];
-  const anchorRange = tocAnchor.namedRange.ranges[0];
-  const insertionIndex = anchorRange.startIndex;
   const bookmarkName = `short_bookmark_${short.id}`;
-  const tocText = `${short.title}\n`;
+  const tocText = `${short.title || short.id}\n`;
 
-  const requests = [
-    // 1. Insert the new TOC entry text
+  return [
     {
       insertText: {
         text: tocText,
-        location: { index: insertionIndex },
+        location: {
+          index: tocAnchorIndex,
+        },
       },
     },
-    // 2. Apply a hyperlink to the new text
     {
       updateTextStyle: {
         range: {
-          startIndex: insertionIndex,
-          endIndex: insertionIndex + tocText.length - 1, // -1 for newline
+          startIndex: tocAnchorIndex,
+          endIndex: tocAnchorIndex + tocText.length,
         },
         textStyle: {
           link: {
@@ -190,29 +184,6 @@ export const generateTocUpdateRequest = (short, document) => {
         fields: 'link',
       },
     },
-    // 3. Delete the old anchor
-    {
-      deleteNamedRange: {
-        name: TOC_ANCHOR_NAME,
-      },
-    },
-    // 4. Recreate the anchor at the new position. It must span at least one character.
-    {
-        insertText: {
-            text: '\u200B', // Zero-width space character to serve as the new anchor point
-            location: { index: insertionIndex + tocText.length },
-        }
-    },
-    {
-      createNamedRange: {
-        name: TOC_ANCHOR_NAME,
-        range: {
-          startIndex: insertionIndex + tocText.length,
-          endIndex: insertionIndex + tocText.length + 1, // Span the zero-width character
-        },
-      },
-    },
   ];
-
-  return requests;
 };
+

@@ -1,0 +1,28 @@
+Refactor: Use Google Docs as sole source of truth for project data
+
+This major refactoring shifts project and short data persistence from local files (projects.json) to Google Docs, making Google Docs the sole source of truth.
+
+Key changes include:
+- Backend (`backend/server.js`):
+    - `GET /api/projects`: Now fetches project data by listing and parsing Google Docs.
+    - `POST /api/projects`: Creates a new Google Doc for the project and initializes it with a template (including project description).
+    - `PUT /api/projects/:projectId`: Updates project name and description directly in the Google Doc.
+    - `DELETE /api/projects/:projectId`: Deletes the corresponding Google Doc.
+    - Removed reliance on `projects.json` for project data.
+- Backend (`backend/src/api/docs/docs.controller.js`):
+    - Implemented `updateShortContentInDoc` to update short details within the Google Doc.
+    - Implemented `deleteShortFromDocument` to remove short sections from the Google Doc.
+- Backend (`backend/src/services/docs/docHelpers.js`):
+    - `initDocumentTemplate` now accepts `projectDescription` for initial document setup.
+- Frontend (`src/services/youtube-shorts-content-factory/`):
+    - `localStorageService.ts` renamed to `projectService.ts`.
+    - `projectService.ts` now uses backend API calls for all project CRUD operations.
+- Frontend Components:
+    - `src/youtube-shorts-content-factory/App.tsx`: Adapted to use `projectService`.
+    - `src/components/youtube-shorts-content-factory/ProjectView.tsx`:
+        - `handleAddNewShort` now sets `newShort.googleDocId` to the project's `driveDocumentId`.
+        - Added `handleDeleteShort` to remove shorts from the Google Doc.
+    - `src/components/youtube-shorts-content-factory/ShortCard.tsx`: Added a delete button for shorts.
+    - `src/components/youtube-shorts-content-factory/ShortDetailModal.tsx`: Ensures the "Create New Google Doc" button is hidden if a project-level document is linked.
+
+This refactoring addresses persistence issues, ensures a single source of truth, and resolves previous bugs related to duplicate document creation and empty documents.

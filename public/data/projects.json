@@ -1,52 +1,10 @@
 [
   {
-    "id": "proj-1756448000928",
-    "name": "프로ㅔㅈㄱ트 생성",
+    "id": "1I64lqJ3Kvh7ojbiWhU2dm8IZURXNp0PkDYckSjSy2zo",
+    "name": "테스트14",
     "description": "",
-    "shorts": [
-      {
-        "id": "short-proj-1756448000928-1756449103719",
-        "projectId": "proj-1756448000928",
-        "title": "쇼츠2",
-        "status": "Idea",
-        "script": {
-          "idea": "",
-          "draft": "",
-          "hook": "",
-          "immersion": "",
-          "body": "",
-          "cta": ""
-        },
-        "metadata": {
-          "tags": "",
-          "cta": "",
-          "imageIdeas": "",
-          "audioNotes": ""
-        }
-      },
-      {
-        "id": "short-proj-1756448000928-1756449084319",
-        "projectId": "proj-1756448000928",
-        "title": "쇼츠1",
-        "status": "Idea",
-        "script": {
-          "idea": "",
-          "draft": "",
-          "hook": "",
-          "immersion": "",
-          "body": "",
-          "cta": ""
-        },
-        "metadata": {
-          "tags": "",
-          "cta": "",
-          "imageIdeas": "",
-          "audioNotes": ""
-        }
-      }
-    ],
-    "driveLocation": "1Ux8lhKoldY2e_vPem6pOpDfT-3hyvuBm",
-    "driveDocumentId": "1rZong59aZmyYd6XrzcnTkgM2YJlGUH0-qC3Nv6i0Z-0",
-    "driveDocumentLink": "https://docs.google.com/document/d/1rZong59aZmyYd6XrzcnTkgM2YJlGUH0-qC3Nv6i0Z-0/edit?usp=drivesdk"
+    "shorts": [],
+    "driveDocumentId": "1I64lqJ3Kvh7ojbiWhU2dm8IZURXNp0PkDYckSjSy2zo",
+    "driveDocumentLink": "https://docs.google.com/document/d/1I64lqJ3Kvh7ojbiWhU2dm8IZURXNp0PkDYckSjSy2zo/edit?usp=drivesdk"
   }
 ]

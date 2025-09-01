@@ -1,8 +1,8 @@
 import api from './api';
 
 const docsService = {
-  createDocument: async (title: string) => {
-    const response = await api.post('/api/docs', { title });
+  createDocument: async (title: string, folderId?: string) => {
+    const response = await api.post('/api/docs', { title, folderId });
     return response.data;
   },
 

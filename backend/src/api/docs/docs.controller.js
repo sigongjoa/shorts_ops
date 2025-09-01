@@ -13,6 +13,16 @@ const getDocsClient = (userId) => {
   return google.docs({ version: 'v1', auth: oauth2Client });
 };
 
+// Helper to get a configured Drive API client for a user
+const getDriveClient = (userId) => {
+  const tokens = getTokensForUser(userId);
+  if (!tokens) {
+    throw new Error('User not authenticated.');
+  }
+  oauth2Client.setCredentials(tokens);
+  return google.drive({ version: 'v3', auth: oauth2Client });
+};
+
 export const createDocument = async (req, res) => {
   try {
     const userId = req.userId;
@@ -21,13 +31,13 @@ export const createDocument = async (req, res) => {
     }
 
     const docs = getDocsClient(userId);
-    const { title } = req.body;
+    const { title, folderId } = req.body; // Expect folderId
 
     if (!title) {
       return res.status(400).send('Document title is required.');
     }
 
-    // 1. Create the document
+    // 1. Create the document in root
     const createResponse = await docs.documents.create({
       requestBody: {
         title,
@@ -36,18 +46,39 @@ export const createDocument = async (req, res) => {
 
     const documentId = createResponse.data.documentId;
 
-    // 2. Initialize it with the TOC template
+    // 2. If folderId is provided, move the document
+    if (folderId) {
+      const drive = getDriveClient(userId);
+      const file = await drive.files.get({
+        fileId: documentId,
+        fields: 'parents',
+      });
+      await drive.files.update({
+        fileId: documentId,
+        addParents: folderId,
+        removeParents: file.data.parents.join(','),
+        fields: 'id, parents',
+      });
+    }
+
+    // 3. Initialize the document with a template
     const templateRequests = docHelpers.initDocumentTemplate(title);
-    await docs.documents.batchUpdate({
-      documentId,
-      requestBody: {
-        requests: templateRequests,
-      },
-    });
+    if (templateRequests.length > 0) {
+        await docs.documents.batchUpdate({
+            documentId,
+            requestBody: {
+                requests: templateRequests,
+            },
+        });
+    }
 
     res.status(200).json(createResponse.data);
   } catch (error) {
     console.error('Error creating document:', error.message);
+    if (error.response && error.response.data && error.response.data.error) {
+        console.error('Google API Error:', error.response.data.error);
+        return res.status(500).send(`Google API Error: ${error.response.data.error.message}`);
+    }
     res.status(500).send('Failed to create document.');
   }
 };
@@ -99,27 +130,22 @@ export const addShortToDocument = async (req, res) => {
 
     // Find the end index of the document body
     const lastElement = document.body.content[document.body.content.length - 1];
-    const insertionIndex = lastElement.endIndex - 1;
+    const insertionIndex = lastElement.endIndex; // Insert at the very end
 
-    // Generate requests for the new short page and for the TOC update
+    // 1. Add the short content (including page break) in a separate batch update
     const shortPageRequests = docHelpers.generateShortPageRequests(short, insertionIndex);
-    const tocUpdateRequests = docHelpers.generateTocUpdateRequest(short, document);
-
-    const allRequests = [...shortPageRequests, ...tocUpdateRequests];
-
-    if (allRequests.length === 0) {
-        return res.status(400).send('Could not generate requests. TOC anchor might be missing.');
+    if (shortPageRequests.length > 0) {
+      await docs.documents.batchUpdate({
+        documentId,
+        requestBody: {
+          requests: shortPageRequests,
+        },
+      });
     }
 
-    const response = await docs.documents.batchUpdate({
-      documentId,
-      requestBody: {
-        requests: allRequests,
-      },
-    });
+    res.status(200).json({ message: 'Short added successfully' });
 
-    res.status(200).json(response.data);
-  } catch (error) {
+    } catch (error) {
     console.error('Error adding short to document:', error.message);
     res.status(500).send('Failed to add short to document.');
   }
@@ -225,6 +251,8 @@ export const getShortContentFromDoc = async (req, res) => {
 
     const shortData = {
         title: '',
+        titleLine1: '',
+        titleLine2: '',
         status: '',
         script: { idea: '', draft: '', hook: '', immersion: '', body: '', cta: '' },
         metadata: { tags: '', cta: '', imageIdeas: '', audioNotes: '' },
@@ -243,6 +271,10 @@ export const getShortContentFromDoc = async (req, res) => {
                 continue;
             } else if (paragraphText.startsWith('Title:')) {
                 shortData.title = paragraphText.substring('Title:'.length).trim();
+            } else if (paragraphText.startsWith('Shorts Title Line 1:')) {
+                shortData.titleLine1 = paragraphText.substring('Shorts Title Line 1:'.length).trim();
+            } else if (paragraphText.startsWith('Shorts Title Line 2:')) {
+                shortData.titleLine2 = paragraphText.substring('Shorts Title Line 2:'.length).trim();
             } else if (paragraphText.startsWith('Status:')) {
                 shortData.status = paragraphText.substring('Status:'.length).trim();
             } else if (paragraphText.startsWith('--- Script ---')) {
@@ -330,22 +362,27 @@ export const updateShortContentInDoc = async (req, res) => {
     // This should mirror the structure created by generateShortPageRequests
     const newContent = 
       `SHORT_ID: ${updatedShort.id}\n` +
-      `${updatedShort.title}\n` +
+      `Title: ${updatedShort.title || ''}\n` +
       `--------------------\n` +
-      `Status: ${updatedShort.status}\n\n` +
+      `Shorts Title Line 1: ${updatedShort.titleLine1 || ''}\n` +
+      `Shorts Title Line 2: ${updatedShort.titleLine2 || ''}\n\n` +
+      `Status: ${updatedShort.status || ''}\n\n` +
       `--- Script ---\n` +
-      `Idea: ${updatedShort.script.idea}\n` +
-      `Draft: ${updatedShort.script.draft}\n` +
-      `Hook: ${updatedShort.script.hook}\n` +
-      `Body: ${updatedShort.script.body}\n` +
-      `CTA: ${updatedShort.script.cta}\n\n` +
+      `Idea: ${updatedShort.script.idea || ''}\n` +
+      `Draft: ${updatedShort.script.draft || ''}\n` +
+      `Hook: ${updatedShort.script.hook || ''}\n` +
+      `Body: ${updatedShort.script.body || ''}\n` +
+      `CTA: ${updatedShort.script.cta || ''}\n\n` +
       `--- Metadata ---\n` +
-      `Tags: ${updatedShort.metadata.tags}\n`;
+      `Tags: ${updatedShort.metadata.tags || ''}\n` +
+      `CTA: ${updatedShort.metadata.cta || ''}\n` +
+      `Image Ideas: ${updatedShort.metadata.imageIdeas || ''}\n` +
+      `Audio Notes: ${updatedShort.metadata.audioNotes || ''}\n`;
 
     const requests = [
       // Delete existing content
       {
-        deleteContent: {
+        deleteContentRange: {
           range: { startIndex: shortStartIndex, endIndex: shortEndIndex },
         },
       },
@@ -358,9 +395,7 @@ export const updateShortContentInDoc = async (req, res) => {
       },
     ];
 
-    // Re-apply styling for the SHORT_ID and Title
-    // This is a simplified approach and might not perfectly replicate all original styling
-    // For SHORT_ID (hidden)
+    // Re-apply styling for the SHORT_ID (hidden)
     requests.push({
       updateTextStyle: {
         range: { startIndex: shortStartIndex, endIndex: shortStartIndex + `SHORT_ID: ${updatedShort.id}`.length },
@@ -372,13 +407,20 @@ export const updateShortContentInDoc = async (req, res) => {
       },
     });
 
-    // For Title (HEADING_2)
+    // **FIX**: Reset style for the main content block
+    const mainContentStartIndex = shortStartIndex + newContent.indexOf('Title:');
     requests.push({
-      updateParagraphStyle: {
-        range: { startIndex: shortStartIndex + `SHORT_ID: ${updatedShort.id}`.length + 1, endIndex: shortStartIndex + `SHORT_ID: ${updatedShort.id}`.length + 1 + updatedShort.title.length },
-        paragraphStyle: { namedStyleType: 'HEADING_2' },
-        fields: 'namedStyleType',
-      },
+        updateTextStyle: {
+            range: {
+                startIndex: mainContentStartIndex,
+                endIndex: shortStartIndex + newContent.length,
+            },
+            textStyle: {
+                foregroundColor: { color: { rgbColor: { red: 0, green: 0, blue: 0 } } },
+                fontSize: { magnitude: 24, unit: 'PT' },
+            },
+            fields: 'foregroundColor,fontSize',
+        },
     });
 
     const response = await docs.documents.batchUpdate({
@@ -453,7 +495,7 @@ export const deleteShortFromDocument = async (req, res) => {
 
     const requests = [
       {
-        deleteContent: {
+        deleteContentRange: {
           range: { startIndex: shortStartIndex, endIndex: shortEndIndex },
         },
       },

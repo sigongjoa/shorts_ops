@@ -47,7 +47,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, onSelectProject,
         setIsAddingProject(true); // Start loading
         try {
             const newProject: Project = {
-                id: `proj-${Date.now()}`,
                 name: newProjectName,
                 description: newProjectDesc,
                 shorts: [],

@@ -6,7 +6,6 @@ export const scheduledTasks = [];
 
 // Helper to publish a video
 export const publishVideo = async (userId, videoId) => {
-  console.log(`Attempting to publish video with ID: ${videoId} for user: ${userId}`);
   try {
     const tokens = getTokensForUser(userId);
     if (!tokens) {
@@ -30,7 +29,6 @@ export const publishVideo = async (userId, videoId) => {
 
 // Helper to post a comment
 export const postComment = async (userId, videoId, commentText) => {
-  console.log(`Attempting to post comment to video with ID: ${videoId} for user: ${userId}`);
   try {
     const tokens = getTokensForUser(userId);
     if (!tokens) {
@@ -75,14 +73,12 @@ export const listPrivateVideos = async (req, res) => {
       part: 'contentDetails',
       mine: true,
     });
-    console.log('Channel Response:', JSON.stringify(channelResponse.data, null, 2));
 
     if (!channelResponse.data.items || channelResponse.data.items.length === 0) {
       return res.status(200).json([]); // No channel found for user
     }
 
     const uploadsPlaylistId = channelResponse.data.items[0].contentDetails.relatedPlaylists.uploads;
-    console.log('Uploads Playlist ID:', uploadsPlaylistId);
 
     // Step 2: Get all videos from the uploads playlist
     let allVideos = [];
@@ -94,7 +90,6 @@ export const listPrivateVideos = async (req, res) => {
         maxResults: 50, // Max results per page
         pageToken: nextPageToken,
       });
-      console.log('Playlist Items Response (page):', JSON.stringify(playlistItemsResponse.data, null, 2));
 
       allVideos = allVideos.concat(playlistItemsResponse.data.items);
       nextPageToken = playlistItemsResponse.data.nextPageToken;
@@ -108,7 +103,6 @@ export const listPrivateVideos = async (req, res) => {
       snippet: item.snippet,
       status: item.status,
     }));
-    console.log('Filtered Private Videos:', JSON.stringify(privateVideos, null, 2));
 
     res.status(200).json(privateVideos);
   } catch (error) {
@@ -121,7 +115,6 @@ export const schedulePublish = async (req, res) => {
   try {
     const { videoId, publishTime, comments } = req.body;
     const userId = req.userId;
-    console.log(`Received scheduling request for video ID: ${videoId}`);
 
     if (!userId || !videoId || !publishTime) {
       return res.status(400).send('Missing required fields: userId, videoId, publishTime.');

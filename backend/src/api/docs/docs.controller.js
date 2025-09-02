@@ -515,3 +515,80 @@ export const deleteShortFromDocument = async (req, res) => {
     res.status(500).send('Failed to delete short from document.');
   }
 };
+
+export const getAllShortsFromDocument = async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).send('Unauthorized: User ID not found.');
+    }
+
+    const docs = getDocsClient(userId);
+    const { documentId } = req.params;
+
+    if (!documentId) {
+      return res.status(400).send('Document ID is required.');
+    }
+
+    const doc = await docs.documents.get({ documentId });
+    const documentContent = doc.data;
+
+    const allShorts = parseShortsFromDocumentContent(documentContent);
+
+    res.status(200).json(allShorts);
+
+  } catch (error) {
+    console.error('Error getting all shorts from document:', error.message);
+    res.status(500).send('Failed to get all shorts from document.');
+  }
+};
+
+export const parseShortsFromDocumentContent = (documentContent) => {
+  const shorts = [];
+  let currentShort = null;
+  let currentSection = '';
+
+  if (!documentContent || !documentContent.body || !documentContent.body.content) {
+    return shorts;
+  }
+
+  for (const element of documentContent.body.content) {
+    if (element.paragraph && element.paragraph.elements) {
+      const paragraphText = element.paragraph.elements
+        .map(el => (el.textRun && el.textRun.content) || '')
+        .join('').trim();
+
+      if (paragraphText.startsWith('SHORT_ID:')) {
+        if (currentShort) {
+          shorts.push(currentShort);
+        }
+        currentShort = { id: paragraphText.substring('SHORT_ID:'.length).trim(), script: {}, metadata: {} };
+        currentSection = ''; // Reset section
+      } else if (currentShort) {
+        if (paragraphText.startsWith('Status:')) {
+          currentShort.status = paragraphText.substring('Status:'.length).trim();
+        } else if (paragraphText.startsWith('---')) {
+          if (paragraphText.includes('Script')) currentSection = 'script';
+          else if (paragraphText.includes('Metadata')) currentSection = 'metadata';
+        } else if (currentSection === 'script') {
+          if (paragraphText.startsWith('Idea:')) currentShort.script.idea = paragraphText.substring('Idea:'.length).trim();
+          else if (paragraphText.startsWith('Draft:')) currentShort.script.draft = paragraphText.substring('Draft:'.length).trim();
+          else if (paragraphText.startsWith('Hook:')) currentShort.script.hook = paragraphText.substring('Hook:'.length).trim();
+          else if (paragraphText.startsWith('Body:')) currentShort.script.body = paragraphText.substring('Body:'.length).trim();
+          else if (paragraphText.startsWith('CTA:')) currentShort.script.cta = paragraphText.substring('CTA:'.length).trim();
+        } else if (currentSection === 'metadata') {
+          if (paragraphText.startsWith('Tags:')) currentShort.metadata.tags = paragraphText.substring('Tags:'.length).trim();
+          else if (paragraphText.startsWith('CTA:')) currentShort.metadata.cta = paragraphText.substring('CTA:'.length).trim();
+          else if (paragraphText.startsWith('Image / B-Roll Ideas:')) currentShort.metadata.imageIdeas = paragraphText.substring('Image / B-Roll Ideas:'.length).trim();
+          else if (paragraphText.startsWith('Audio / Music Notes:')) currentShort.metadata.audioNotes = paragraphText.substring('Audio / Music Notes:'.length).trim();
+        }
+      }
+    }
+  }
+  if (currentShort) {
+    shorts.push(currentShort);
+  }
+  console.log('parseShortsFromDocumentContent - Input documentContent:', documentContent);
+  console.log('parseShortsFromDocumentContent - Parsed shorts:', shorts);
+  return shorts;
+};

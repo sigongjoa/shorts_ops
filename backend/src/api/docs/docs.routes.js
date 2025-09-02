@@ -13,5 +13,7 @@ router.post('/:documentId/batchUpdate', docsController.batchUpdateDocument);
 router.post('/:documentId/addShort', docsController.addShortToDocument);
 router.get('/:documentId/shorts/:shortId', docsController.getShortContentFromDoc);
 router.put('/:documentId/shorts/:shortId', docsController.updateShortContentInDoc);
+router.delete('/:documentId/shorts/:shortId', docsController.deleteShortFromDocument);
+router.get('/:documentId/allShorts', docsController.getAllShortsFromDocument);
 
 export default router;

@@ -30,6 +30,16 @@ const docsService = {
     const response = await api.put(`/api/docs/${documentId}/shorts/${shortId}`, { short });
     return response.data;
   },
+
+  deleteShortFromDocument: async (documentId: string, shortId: string) => {
+    const response = await api.delete(`/api/docs/${documentId}/shorts/${shortId}`);
+    return response.data;
+  },
+
+  getAllShortsFromDocument: async (documentId: string) => {
+    const response = await api.get(`/api/docs/${documentId}/allShorts`);
+    return response.data;
+  },
 };
 
 export default docsService;

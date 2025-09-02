@@ -139,38 +139,18 @@ app.post('/api/upload/image', upload.single('image'), (req, res) => {
 });
 
 // Projects API
-app.get('/api/projects', (req, res) => {
-  fs.readFile(dataFilePath, 'utf8', (err, data) => {
-    if (err) {
-      if (err.code === 'ENOENT') {
-        return res.send([]);
-      }
-      console.error('Error reading projects.json:', err);
-      return res.status(500).send('Error reading data file');
-    }
-    if (data.trim() === '') {
-      return res.send([]);
-    }
-    try {
-      const parsed = JSON.parse(data);
-      // Always convert to an array
-      const projects = Array.isArray(parsed) ? parsed : [parsed];
-      res.send(projects);
-    } catch (parseError) {
-      console.error('Error parsing projects.json:', parseError);
-      res.status(500).send('Error parsing data file');
-    }
-  });
-});
+
 
 import authenticate from './src/middleware/auth.js';
 import { createGoogleDoc, createGoogleDocInRoot } from './src/api/drive/drive.controller.js';
 import { initDocumentTemplate } from './src/services/docs/docHelpers.js';
 import { getTokensForUser } from './src/api/auth/auth.controller.js';
 import { getGoogleClient } from './src/utils/googleClientUtils.js';
+import { parseShortsFromDocumentContent } from './src/api/docs/docs.controller.js';
 
 // Projects API
 app.get('/api/projects', authenticate, async (req, res) => {
+  console.log('GET /api/projects route hit');
   try {
     const userId = req.userId;
     if (!userId) {
@@ -202,13 +182,12 @@ app.get('/api/projects', authenticate, async (req, res) => {
         const docContent = await docs.documents.get({ documentId: docMetadata.id });
         const document = docContent.data;
 
-        // Extract project details from the document
-        // Assuming project name is the document title
+        console.log(`Processing document: ${docMetadata.name} (${docMetadata.id})`);
+        console.log('Document Content fetched:', JSON.stringify(document, null, 2));
+
         const projectName = document.title;
         let projectDescription = '';
-        let shorts = [];
-
-        // Find project description (if added by initDocumentTemplate)
+        
         if (document.body && document.body.content) {
           for (const element of document.body.content) {
             if (element.paragraph && element.paragraph.elements) {
@@ -216,65 +195,25 @@ app.get('/api/projects', authenticate, async (req, res) => {
                 .map(el => (el.textRun && el.textRun.content) || '')
                 .join('').trim();
               
-              // Assuming description is the first NORMAL_TEXT paragraph after HEADING_1
               if (element.paragraph.paragraphStyle && element.paragraph.paragraphStyle.namedStyleType === 'NORMAL_TEXT') {
                 projectDescription = paragraphText;
-                break; // Found description, move on
+                break;
               }
             }
           }
 
-          // Extract shorts data
-          let currentShort = null;
-          let currentSection = '';
+          const shorts = parseShortsFromDocumentContent(document);
+          console.log('Shorts extracted from document:', shorts);
 
-          for (const element of document.body.content) {
-            if (element.paragraph && element.paragraph.elements) {
-              const paragraphText = element.paragraph.elements
-                .map(el => (el.textRun && el.textRun.content) || '')
-                .join('').trim();
-
-              if (paragraphText.startsWith('SHORT_ID:')) {
-                if (currentShort) {
-                  shorts.push(currentShort);
-                }
-                currentShort = { id: paragraphText.substring('SHORT_ID:'.length).trim(), script: {}, metadata: {} };
-                currentSection = ''; // Reset section
-              } else if (currentShort) {
-                if (paragraphText.startsWith('Status:')) {
-                  currentShort.status = paragraphText.substring('Status:'.length).trim();
-                } else if (paragraphText.startsWith('---')) {
-                  if (paragraphText.includes('Script')) currentSection = 'script';
-                  else if (paragraphText.includes('Metadata')) currentSection = 'metadata';
-                } else if (currentSection === 'script') {
-                  if (paragraphText.startsWith('Idea:')) currentShort.script.idea = paragraphText.substring('Idea:'.length).trim();
-                  else if (paragraphText.startsWith('Draft:')) currentShort.script.draft = paragraphText.substring('Draft:'.length).trim();
-                  else if (paragraphText.startsWith('Hook:')) currentShort.script.hook = paragraphText.substring('Hook:'.length).trim();
-                  else if (paragraphText.startsWith('Body:')) currentShort.script.body = paragraphText.substring('Body:'.length).trim();
-                  else if (paragraphText.startsWith('CTA:')) currentShort.script.cta = paragraphText.substring('CTA:'.length).trim();
-                } else if (currentSection === 'metadata') {
-                  if (paragraphText.startsWith('Tags:')) currentShort.metadata.tags = paragraphText.substring('Tags:'.length).trim();
-                  else if (paragraphText.startsWith('CTA:')) currentShort.metadata.cta = paragraphText.substring('CTA:'.length).trim();
-                  else if (paragraphText.startsWith('Image / B-Roll Ideas:')) currentShort.metadata.imageIdeas = paragraphText.substring('Image / B-Roll Ideas:'.length).trim();
-                  else if (paragraphText.startsWith('Audio / Music Notes:')) currentShort.metadata.audioNotes = paragraphText.substring('Audio / Music Notes:'.length).trim();
-                }
-              }
-            }
-          }
-          if (currentShort) {
-            shorts.push(currentShort);
-          }
-        }
-
-        projects.push(normalizeProject({
-          id: docMetadata.id,
-          name: projectName,
-          description: projectDescription,
-          shorts: shorts,
-          driveDocumentId: docMetadata.id,
-          driveDocumentLink: docMetadata.webViewLink,
-        }));
-
+          projects.push(normalizeProject({
+            id: docMetadata.id,
+            name: projectName,
+            description: projectDescription,
+            shorts: shorts,
+            driveDocumentId: docMetadata.id,
+            driveDocumentLink: docMetadata.webViewLink,
+          }));
+        } 
       } catch (docError) {
         console.error(`Error processing document ${docMetadata.id}:`, docError);
       }
@@ -282,11 +221,11 @@ app.get('/api/projects', authenticate, async (req, res) => {
 
     res.status(200).json(projects);
 
-  } catch (error) {
-    console.error('Error listing projects from Google Drive:', error.message);
-    res.status(500).send('Failed to list projects from Google Drive.');
-  }
-});
+    } catch (error) {
+      console.error('Error listing projects from Google Drive:', error.message);
+      res.status(500).send('Failed to list projects from Google Drive.');
+    }
+  });
 
 app.post('/api/projects', authenticate, async (req, res) => {
   let newProject;
@@ -369,12 +308,29 @@ app.post('/api/projects', authenticate, async (req, res) => {
       // For now, we'll just log and proceed without the Drive doc details
     }
 
-  fs.writeFile(dataFilePath, JSON.stringify([normalizeProject(newProject)], null, 2), 'utf8', (err) => {
-    if (err) {
-      console.error('Error writing projects.json:', err);
-      return res.status(500).send('Error writing data file');
+  fs.readFile(dataFilePath, 'utf8', (readErr, data) => {
+    let projects = [];
+    if (!readErr) {
+      try {
+        projects = JSON.parse(data);
+        if (!Array.isArray(projects)) {
+          projects = []; // Ensure it's an array
+        }
+      } catch (parseError) {
+        console.error('Error parsing projects.json during project creation:', parseError);
+        projects = [];
+      }
     }
-    res.send(normalizeProject(newProject)); // Return the updated newProject object
+
+    projects.push(normalizeProject(newProject));
+
+    fs.writeFile(dataFilePath, JSON.stringify(projects, null, 2), 'utf8', (writeErr) => {
+      if (writeErr) {
+        console.error('Error writing projects.json:', writeErr);
+        return res.status(500).send('Error writing data file');
+      }
+      res.send(normalizeProject(newProject)); // Return the updated newProject object
+    });
   });
 });
 

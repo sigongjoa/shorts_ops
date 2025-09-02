@@ -31,7 +31,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack, onUpd
     try {
       // Delete from Google Doc if linked
       if (project.driveDocumentId) {
-        await docsService.deleteShortFromDocument(project.driveDocumentId, shortId);
+        await docsService.deleteParagraph(project.googleDocId, shortId);
         console.log('Short deleted from Google Doc successfully!');
       }
 

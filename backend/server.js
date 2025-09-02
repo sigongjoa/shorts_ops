@@ -19,6 +19,7 @@ function normalizeProject(project) {
     shorts: Array.isArray(project.shorts) ? project.shorts : [],
     driveDocumentId: project.driveDocumentId ? String(project.driveDocumentId) : undefined,
     driveDocumentLink: project.driveDocumentLink ? String(project.driveDocumentLink) : undefined,
+    driveLocation: project.driveLocation ? String(project.driveLocation) : undefined,
   };
 }
 

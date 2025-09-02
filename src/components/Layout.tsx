@@ -69,6 +69,10 @@ const LayoutContent: React.FC = () => {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ddd'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >YouTube Data</Link>
+          <Link to="/youtube-scheduler" style={navLinkStyle} 
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ddd'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >YouTube Scheduler</Link>
 
           <h2 style={{ color: '#333', marginBottom: '20px', marginTop: '30px' }}>Authentication</h2>
           {isAuthenticated ? (

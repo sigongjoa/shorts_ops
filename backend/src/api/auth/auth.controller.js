@@ -1,5 +1,5 @@
 import oauth2Client from '../../config/googleClient.js';
-import { google } from 'googleapis';
+import { getGoogleClient } from '../../utils/googleClientUtils.js';
 
 // In a real application, you would store tokens securely (e.g., in a database)
 // For this example, we'll use a simple in-memory store for demonstration purposes.
@@ -34,12 +34,11 @@ export const googleAuthCallback = async (req, res) => {
   const { code } = req.query;
   try {
     const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
 
     // In a real app, you'd identify the user and store these tokens securely.
     // For simplicity, we'll just store them in a global object for now.
     // You might want to associate these tokens with a session or user ID.
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const oauth2 = getGoogleClient(tokens, 'oauth2', 'v2');
     const userInfo = await oauth2.userinfo.get();
     const userId = userInfo.data.id; // Use Google ID as unique identifier
     tokensStore[userId] = tokens;
@@ -64,15 +63,6 @@ export const getTokensForUser = (userId) => {
 };
 
 // Helper to set credentials for a specific API call
-export const setCredentialsForClient = (userId) => {
-  const tokens = tokensStore[userId];
-  if (tokens) {
-    oauth2Client.setCredentials(tokens);
-    return true;
-  }
-  return false;
-};
-
 export const checkAuthStatus = (req, res) => {
   if (req.session.user) {
     res.status(200).json({ authenticated: true, user: req.session.user });
@@ -88,10 +78,9 @@ export const getMe = async (req, res) => {
       return res.status(401).send('Unauthorized');
     }
 
-    oauth2Client.setCredentials(tokensStore[userId]);
-
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const tokens = tokensStore[userId];
+    const youtube = getGoogleClient(tokens, 'youtube', 'v3');
+    const oauth2 = getGoogleClient(tokens, 'oauth2', 'v2');
 
     // Fetch YouTube Channel Info
     const channelResponse = await youtube.channels.list({

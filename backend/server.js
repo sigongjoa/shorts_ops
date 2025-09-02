@@ -71,6 +71,7 @@ import docsRoutes from './src/api/docs/docs.routes.js';
 app.use('/api/docs', docsRoutes);
 
 import youtubeRoutes from './src/api/youtube/youtube.routes.js';
+import { scheduledTasks, publishVideo, postComment } from './src/api/youtube/youtube.controller.js';
 app.use('/api/youtube', youtubeRoutes);
 
 // --- Unified Project Routes (from unified-project/server.js) ---
@@ -165,9 +166,8 @@ app.get('/api/projects', (req, res) => {
 import authenticate from './src/middleware/auth.js';
 import { createGoogleDoc, createGoogleDocInRoot } from './src/api/drive/drive.controller.js';
 import { initDocumentTemplate } from './src/services/docs/docHelpers.js';
-import { google } from 'googleapis';
-import oauth2Client from './src/config/googleClient.js';
 import { getTokensForUser } from './src/api/auth/auth.controller.js';
+import { getGoogleClient } from './src/utils/googleClientUtils.js';
 
 // Projects API
 app.get('/api/projects', authenticate, async (req, res) => {
@@ -177,14 +177,13 @@ app.get('/api/projects', authenticate, async (req, res) => {
       return res.status(401).send('Unauthorized: User ID not found.');
     }
 
-    const drive = google.drive({ version: 'v3', auth: oauth2Client });
-    const docs = google.docs({ version: 'v1', auth: oauth2Client });
-
     const tokens = getTokensForUser(userId);
     if (!tokens) {
       throw new Error('User not authenticated for Google APIs.');
     }
-    oauth2Client.setCredentials(tokens);
+
+    const drive = getGoogleClient(tokens, 'drive', 'v3');
+    const docs = getGoogleClient(tokens, 'docs', 'v1');
 
     // Search for documents that represent projects
     // For now, let's assume projects are Google Docs with a specific naming convention or in a specific folder
@@ -343,12 +342,12 @@ app.post('/api/projects', authenticate, async (req, res) => {
 
         // Initialize the new Google Doc with the template
         try {
-          const docsClient = google.docs({ version: 'v1', auth: oauth2Client });
+          const docsClient = getGoogleClient(tokens, 'docs', 'v1');
           const tokens = getTokensForUser(userId);
           if (!tokens) {
             throw new Error('User not authenticated for Docs API.');
           }
-          oauth2Client.setCredentials(tokens);
+          
 
           const templateRequests = initDocumentTemplate(newProject.name, newProject.description);
           await docsClient.documents.batchUpdate({
@@ -455,13 +454,13 @@ app.put('/api/projects/:projectId', authenticate, async (req, res) => {
     const { projectId } = req.params;
     const updatedProject = normalizeProject(req.body); // The updated project object from frontend
 
-    const docs = google.docs({ version: 'v1', auth: oauth2Client });
-    const drive = google.drive({ version: 'v3', auth: oauth2Client });
     const tokens = getTokensForUser(userId);
     if (!tokens) {
       throw new Error('User not authenticated for Docs API.');
     }
-    oauth2Client.setCredentials(tokens);
+
+    const docs = getGoogleClient(tokens, 'docs', 'v1');
+    const drive = getGoogleClient(tokens, 'drive', 'v3');
 
     const requests = [];
 
@@ -537,12 +536,12 @@ app.delete('/api/projects/:projectId', authenticate, async (req, res) => {
 
     const { projectId } = req.params;
 
-    const drive = google.drive({ version: 'v3', auth: oauth2Client });
     const tokens = getTokensForUser(userId);
     if (!tokens) {
       throw new Error('User not authenticated for Drive API.');
     }
-    oauth2Client.setCredentials(tokens);
+
+    const drive = getGoogleClient(tokens, 'drive', 'v3');
 
     await drive.files.delete({ fileId: projectId });
 
@@ -564,4 +563,28 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Unified Backend server is running on port ${PORT}`);
+
+  // Start the scheduler for YouTube video publishing
+  setInterval(async () => {
+    const now = new Date();
+    for (let i = 0; i < scheduledTasks.length; i++) {
+      const task = scheduledTasks[i];
+      if (task.status === 'pending' && now >= task.publishTime) {
+        console.log(`Executing scheduled task for video ${task.videoId}`);
+        try {
+          await publishVideo(task.userId, task.videoId);
+          for (const comment of task.comments) {
+            await postComment(task.userId, task.videoId, comment);
+          }
+          task.status = 'completed';
+          console.log(`Task for video ${task.videoId} completed.`);
+        } catch (error) {
+          task.status = 'failed';
+          console.error(`Task for video ${task.videoId} failed:`, error);
+        }
+      }
+    }
+    // Remove completed or failed tasks from the array to prevent re-processing
+    scheduledTasks.splice(0, scheduledTasks.length, ...scheduledTasks.filter(task => task.status === 'pending'));
+  }, 60 * 1000); // Run every 1 minute
 });

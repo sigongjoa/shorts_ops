@@ -72,6 +72,20 @@ const youtubeService = {
     });
     return response.data;
   },
+
+  fetchPrivateVideos: async () => {
+    const response = await api.get('/api/youtube/private-videos');
+    return response.data;
+  },
+
+  schedulePublish: async (videoId: string, publishTime: Date, comments: string[]) => {
+    const response = await api.post('/api/youtube/schedule-publish', {
+      videoId,
+      publishTime,
+      comments,
+    });
+    return response.data;
+  },
 };
 
 export default youtubeService;

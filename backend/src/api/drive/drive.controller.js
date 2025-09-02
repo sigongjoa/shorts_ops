@@ -1,21 +1,11 @@
 import { google } from 'googleapis';
-import oauth2Client from '../../config/googleClient.js';
 import { getTokensForUser } from '../auth/auth.controller.js';
 import multer from 'multer';
 import stream from 'stream';
+import { getGoogleClient } from '../../utils/googleClientUtils.js';
 
 // Configure Multer for file uploads
 const upload = multer({ storage: multer.memoryStorage() });
-
-// Helper to get a configured Drive API client for a user
-const getDriveClient = (userId) => {
-  const tokens = getTokensForUser(userId);
-  if (!tokens) {
-    throw new Error('User not authenticated.');
-  }
-  oauth2Client.setCredentials(tokens);
-  return google.drive({ version: 'v3', auth: oauth2Client });
-};
 
 export const uploadFile = [upload.single('file'), async (req, res) => {
   try {
@@ -24,7 +14,7 @@ export const uploadFile = [upload.single('file'), async (req, res) => {
       return res.status(401).send('Unauthorized: User ID not found.');
     }
 
-    const drive = getDriveClient(userId);
+    const drive = getGoogleClient(getTokensForUser(userId), 'drive', 'v3');
     const fileMetadata = { name: req.file.originalname };
 
     // Create a readable stream from the buffer
@@ -56,7 +46,7 @@ export const listFiles = async (req, res) => {
       return res.status(401).send('Unauthorized: User ID not found.');
     }
 
-    const drive = getDriveClient(userId);
+    const drive = getGoogleClient(getTokensForUser(userId), 'drive', 'v3');
     const q = req.query.q || ''; // Search query parameter
     const pageSize = req.query.pageSize || 10; // Number of files to return
 
@@ -80,7 +70,7 @@ export const downloadFile = async (req, res) => {
       return res.status(401).send('Unauthorized: User ID not found.');
     }
 
-    const drive = getDriveClient(userId);
+    const drive = getGoogleClient(getTokensForUser(userId), 'drive', 'v3');
     const fileId = req.params.fileId;
 
     const response = await drive.files.get({
@@ -111,7 +101,7 @@ export const deleteFile = async (req, res) => {
       return res.status(401).send('Unauthorized: User ID not found.');
     }
 
-    const drive = getDriveClient(userId);
+    const drive = getGoogleClient(getTokensForUser(userId), 'drive', 'v3');
     const fileId = req.params.fileId;
 
     await drive.files.delete({ fileId: fileId });
@@ -125,7 +115,7 @@ export const deleteFile = async (req, res) => {
 
 // Helper to find an existing Google Doc by name and optional parent folder
 const findGoogleDocByName = async (userId, fileName, parentFolderId = null) => {
-  const drive = getDriveClient(userId);
+  const drive = getGoogleClient(getTokensForUser(userId), 'drive', 'v3');
   let q = `name = '${fileName}' and mimeType = 'application/vnd.google-apps.document' and trashed = false`;
   if (parentFolderId) {
     q += ` and '${parentFolderId}' in parents`;
@@ -148,7 +138,7 @@ export const createGoogleDoc = async (userId, fileName, parentFolderId) => {
       return existingDoc;
     }
 
-    const drive = getDriveClient(userId);
+    const drive = getGoogleClient(getTokensForUser(userId), 'drive', 'v3');
     const fileMetadata = {
       name: fileName,
       mimeType: 'application/vnd.google-apps.document',
@@ -175,7 +165,7 @@ export const createGoogleDocInRoot = async (userId, fileName) => {
       return existingDoc;
     }
 
-    const drive = getDriveClient(userId);
+    const drive = getGoogleClient(getTokensForUser(userId), 'drive', 'v3');
     const fileMetadata = {
       name: fileName,
       mimeType: 'application/vnd.google-apps.document',
@@ -200,7 +190,7 @@ export const listGoogleDriveFolders = async (req, res) => {
       return res.status(401).send('Unauthorized: User ID not found.');
     }
 
-    const drive = getDriveClient(userId);
+    const drive = getGoogleClient(getTokensForUser(userId), 'drive', 'v3');
     const response = await drive.files.list({
       q: 'mimeType = "application/vnd.google-apps.folder" and trashed = false',
       fields: 'nextPageToken, files(id, name, webViewLink)',

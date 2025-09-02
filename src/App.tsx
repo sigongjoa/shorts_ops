@@ -16,6 +16,8 @@ import DocsPage from './pages/DocsPage';
 import YouTubePage from './pages/YouTubePage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 
+import YouTubeSchedulerPage from './pages/YouTubeSchedulerPage';
+
 import { AuthProvider } from './context/AuthContext'; // Import AuthProvider
 
 function App() {
@@ -29,6 +31,7 @@ function App() {
           <Route path="ai-shorts-generator" element={<AiShortsGeneratorPage />} />
           <Route path="attention-model" element={<AttentionModelPage />} />
           <Route path="youtube-shorts-content-factory" element={<YoutubeShortsContentFactoryPage />} />
+          <Route path="youtube-scheduler" element={<YouTubeSchedulerPage />} />
 
           {/* GCP Test Pages (as children of Layout) */}
           {/* HomePage is already index, so other GCP pages */}
